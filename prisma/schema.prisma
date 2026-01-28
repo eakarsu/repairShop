@@ -1,0 +1,647 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User & Authentication
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          UserRole  @default(TECHNICIAN)
+  phone         String?
+  avatar        String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tickets       RepairTicket[] @relation("AssignedTechnician")
+  createdTickets RepairTicket[] @relation("CreatedBy")
+  communications CommunicationLog[]
+  sales         Sale[]
+  quotes        Quote[]
+  autoOrderApprovals AutoOrderLog[] @relation("ApprovedBy")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  TECHNICIAN
+  RECEPTIONIST
+}
+
+// Customer Management
+model Customer {
+  id              String    @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String?   @unique
+  phone           String
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  devices         Device[]
+  tickets         RepairTicket[]
+  communications  CommunicationLog[]
+  sales           Sale[]
+  quotes          Quote[]
+  warrantyClaims  WarrantyClaim[]
+}
+
+// Device/Item Management
+model Device {
+  id              String    @id @default(cuid())
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  deviceType      String
+  brand           String?
+  model           String?
+  serialNumber    String?
+  color           String?
+  condition       String?
+  accessories     String?
+  password        String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tickets         RepairTicket[]
+}
+
+// Repair Ticket System
+model RepairTicket {
+  id              String        @id @default(cuid())
+  ticketNumber    String        @unique
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  deviceId        String?
+  device          Device?       @relation(fields: [deviceId], references: [id])
+
+  issueDescription String
+  diagnosticNotes  String?
+  repairNotes      String?
+  status           TicketStatus  @default(RECEIVED)
+  priority         Priority      @default(NORMAL)
+
+  estimatedCost    Float?
+  actualCost       Float?
+  laborCost        Float?
+  partsCost        Float?
+
+  technicianId     String?
+  technician       User?         @relation("AssignedTechnician", fields: [technicianId], references: [id])
+  createdById      String
+  createdBy        User          @relation("CreatedBy", fields: [createdById], references: [id])
+
+  intakeDate       DateTime      @default(now())
+  estimatedCompletion DateTime?
+  completedDate    DateTime?
+  pickupDate       DateTime?
+
+  warrantyStatus   WarrantyStatus @default(NONE)
+  warrantyExpiry   DateTime?
+
+  // AI Diagnostic fields
+  aiDiagnosticSummary String?
+
+  // Timeline estimation fields
+  estimatedStartDate  DateTime?
+  estimatedDuration   Int?         // in minutes
+  timelineMilestones  String?      // JSON string of milestones
+  complexityScore     Int?         // 1-10 scale
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  partsUsed        TicketPart[]
+  statusHistory    TicketStatusHistory[]
+  communications   CommunicationLog[]
+  quotes           Quote[]
+  sale             Sale?
+  photos           TicketPhoto[]
+  warrantyClaims   WarrantyClaim[]
+  aiDiagnosticSessions AiDiagnosticSession[]
+}
+
+enum TicketStatus {
+  RECEIVED
+  DIAGNOSING
+  WAITING_APPROVAL
+  WAITING_PARTS
+  IN_REPAIR
+  QUALITY_CHECK
+  READY_PICKUP
+  COMPLETED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum WarrantyStatus {
+  NONE
+  VALID
+  EXPIRED
+  VOID
+}
+
+model TicketStatusHistory {
+  id          String    @id @default(cuid())
+  ticketId    String
+  ticket      RepairTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  fromStatus  TicketStatus?
+  toStatus    TicketStatus
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+// Inventory & Parts Management
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+
+  parts       Part[]
+}
+
+model Part {
+  id              String    @id @default(cuid())
+  sku             String    @unique
+  name            String
+  description     String?
+  categoryId      String
+  category        Category  @relation(fields: [categoryId], references: [id])
+
+  costPrice       Float
+  sellingPrice    Float
+  quantity        Int       @default(0)
+  minQuantity     Int       @default(5)
+  location        String?
+
+  compatibleWith  String[]
+  vendorId        String?
+  vendor          Vendor?   @relation(fields: [vendorId], references: [id])
+
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  ticketParts     TicketPart[]
+  orderItems      OrderItem[]
+  saleItems       SaleItem[]
+  autoOrderRule   AutoOrderRule?
+  autoOrderLogs   AutoOrderLog[]
+}
+
+model TicketPart {
+  id          String    @id @default(cuid())
+  ticketId    String
+  ticket      RepairTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  partId      String
+  part        Part      @relation(fields: [partId], references: [id])
+
+  quantity    Int
+  unitPrice   Float
+  createdAt   DateTime  @default(now())
+}
+
+// Vendor Management
+model Vendor {
+  id          String    @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  website     String?
+  notes       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  parts       Part[]
+  orders      Order[]
+}
+
+// Parts Ordering
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  vendorId    String
+  vendor      Vendor      @relation(fields: [vendorId], references: [id])
+
+  status      OrderStatus @default(PENDING)
+  totalAmount Float
+  notes       String?
+
+  isAutoGenerated Boolean  @default(false)
+  autoOrderLogId  String?  @unique
+  autoOrderLog    AutoOrderLog? @relation(fields: [autoOrderLogId], references: [id])
+
+  orderDate   DateTime    @default(now())
+  expectedDate DateTime?
+  receivedDate DateTime?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  items       OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+  ORDERED
+  SHIPPED
+  PARTIAL
+  RECEIVED
+  CANCELLED
+}
+
+model OrderItem {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  partId      String
+  part        Part      @relation(fields: [partId], references: [id])
+
+  quantity    Int
+  unitPrice   Float
+  receivedQty Int       @default(0)
+}
+
+// Service Pricing
+model Service {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  category        String
+  basePrice       Float
+  estimatedTime   Int?      // in minutes
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  quoteItems      QuoteItem[]
+  saleItems       SaleItem[]
+}
+
+// Quote Generation
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique
+  customerId      String
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  ticketId        String?
+  ticket          RepairTicket? @relation(fields: [ticketId], references: [id])
+  createdById     String
+  createdBy       User        @relation(fields: [createdById], references: [id])
+
+  status          QuoteStatus @default(DRAFT)
+  subtotal        Float
+  taxRate         Float       @default(0)
+  taxAmount       Float       @default(0)
+  discount        Float       @default(0)
+  total           Float
+
+  validUntil      DateTime
+  notes           String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           QuoteItem[]
+  approval        QuoteApproval?
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model QuoteItem {
+  id          String    @id @default(cuid())
+  quoteId     String
+  quote       Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  itemType    String    // 'service' or 'part'
+  serviceId   String?
+  service     Service?  @relation(fields: [serviceId], references: [id])
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+}
+
+// Point of Sale
+model Sale {
+  id              String      @id @default(cuid())
+  saleNumber      String      @unique
+  customerId      String?
+  customer        Customer?   @relation(fields: [customerId], references: [id])
+  ticketId        String?     @unique
+  ticket          RepairTicket? @relation(fields: [ticketId], references: [id])
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+
+  subtotal        Float
+  taxRate         Float       @default(0)
+  taxAmount       Float       @default(0)
+  discount        Float       @default(0)
+  total           Float
+
+  paymentMethod   PaymentMethod
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentReference String?
+
+  notes           String?
+  createdAt       DateTime    @default(now())
+
+  items           SaleItem[]
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  CHECK
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  PARTIAL
+}
+
+model SaleItem {
+  id          String    @id @default(cuid())
+  saleId      String
+  sale        Sale      @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  itemType    String    // 'service', 'part', 'accessory', 'warranty'
+  partId      String?
+  part        Part?     @relation(fields: [partId], references: [id])
+  serviceId   String?
+  service     Service?  @relation(fields: [serviceId], references: [id])
+
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+}
+
+// Communication Log
+model CommunicationLog {
+  id          String    @id @default(cuid())
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  ticketId    String?
+  ticket      RepairTicket? @relation(fields: [ticketId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+
+  type        CommunicationType
+  direction   CommunicationDirection
+  subject     String?
+  content     String
+
+  createdAt   DateTime  @default(now())
+}
+
+enum CommunicationType {
+  EMAIL
+  SMS
+  PHONE
+  IN_PERSON
+  NOTE
+}
+
+enum CommunicationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+// Settings
+model Setting {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String
+  description String?
+  updatedAt   DateTime  @updatedAt
+}
+
+// AI Diagnostic Session (Conversational)
+model AiDiagnosticSession {
+  id          String    @id @default(cuid())
+  ticketId    String
+  ticket      RepairTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  messages    AiDiagnosticMessage[]
+  summary     String?
+  suggestedIssues String?  // JSON array
+  suggestedTests  String?  // JSON array
+  confidence  Float?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model AiDiagnosticMessage {
+  id          String    @id @default(cuid())
+  sessionId   String
+  session     AiDiagnosticSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role        String    // 'user' or 'assistant'
+  content     String
+  createdAt   DateTime  @default(now())
+}
+
+// Ticket Photos for Damage Assessment
+model TicketPhoto {
+  id          String    @id @default(cuid())
+  ticketId    String
+  ticket      RepairTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  path        String    // relative path in /public/uploads/
+
+  description String?
+  aiAnalysis  String?   // AI-generated damage description
+
+  uploadedAt  DateTime  @default(now())
+}
+
+// Auto-Order Rules per Part
+model AutoOrderRule {
+  id              String    @id @default(cuid())
+  partId          String    @unique
+  part            Part      @relation(fields: [partId], references: [id], onDelete: Cascade)
+
+  isEnabled       Boolean   @default(true)
+  reorderPoint    Int       // When to trigger (uses minQuantity if not set)
+  reorderQuantity Int       // How many to order
+  maxAutoOrderQty Int?      // Maximum auto-order quantity
+  preferredVendorId String?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Auto-Order Log/History
+model AutoOrderLog {
+  id              String    @id @default(cuid())
+  partId          String
+  part            Part      @relation(fields: [partId], references: [id])
+
+  triggeredQuantity Int     // Quantity that triggered the order
+  orderQuantity   Int       // Quantity ordered
+  status          AutoOrderStatus @default(PENDING_APPROVAL)
+
+  approvedById    String?
+  approvedBy      User?     @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+  rejectionReason String?
+
+  order           Order?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum AutoOrderStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  ORDER_CREATED
+  CANCELLED
+}
+
+// Quote Approval (for Customer Approval Workflow)
+model QuoteApproval {
+  id              String    @id @default(cuid())
+  quoteId         String    @unique
+  quote           Quote     @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  token           String    @unique @default(cuid())
+  status          ApprovalStatus @default(PENDING)
+
+  sentAt          DateTime?
+  sentToEmail     String?
+  viewedAt        DateTime?
+  respondedAt     DateTime?
+
+  customerNotes   String?
+  ipAddress       String?
+
+  expiresAt       DateTime
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+enum ApprovalStatus {
+  PENDING
+  VIEWED
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// Warranty Claims
+model WarrantyClaim {
+  id              String    @id @default(cuid())
+  claimNumber     String    @unique
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  ticketId        String?
+  ticket          RepairTicket? @relation(fields: [ticketId], references: [id])
+
+  status          WarrantyClaimStatus @default(SUBMITTED)
+
+  // Claim details
+  productDescription String
+  purchaseDate    DateTime?
+  warrantyEndDate DateTime?
+  issueDescription String
+  resolution      String?
+
+  // Financial
+  claimAmount     Float?
+  approvedAmount  Float?
+
+  // Dates
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  resolvedAt      DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  statusHistory   WarrantyClaimStatusHistory[]
+  documents       WarrantyDocument[]
+}
+
+enum WarrantyClaimStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+// Warranty Claim Status History (Audit Trail)
+model WarrantyClaimStatusHistory {
+  id              String    @id @default(cuid())
+  claimId         String
+  claim           WarrantyClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  fromStatus      WarrantyClaimStatus?
+  toStatus        WarrantyClaimStatus
+  notes           String?
+  changedBy       String?
+
+  createdAt       DateTime  @default(now())
+}
+
+// Warranty Claim Documents/Attachments
+model WarrantyDocument {
+  id              String    @id @default(cuid())
+  claimId         String
+  claim           WarrantyClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  filename        String
+  originalName    String
+  mimeType        String
+  size            Int
+  path            String
+
+  documentType    String?   // 'receipt', 'photo', 'warranty_card', etc.
+
+  uploadedAt      DateTime  @default(now())
+}

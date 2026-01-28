@@ -1,0 +1,56 @@
+ Here's how to test each new feature through the frontend:
+
+  1. AI Diagnostic Assistant
+
+  1. Go to Dashboard → Tickets
+  2. Click on any ticket row to open it
+  3. Click the "AI Diagnostic" tab
+  4. Type symptoms in the chat and click Send
+
+  2. Photo Upload & Damage Assessment
+
+  1. Go to Dashboard → Tickets
+  2. Click on any ticket
+  3. Click the "Photos" tab
+  4. Drag & drop images or click to upload
+  5. After upload, click a photo → "Analyze with AI"
+
+  3. Auto-Ordering System
+
+  1. Go to Dashboard → Inventory
+  2. Click "Auto-Orders" button (top right)
+  3. Three tabs available:
+    - Pending - Approve/Reject auto-orders
+    - History - View past orders
+    - Rules - Configure auto-order rules per part
+
+  Also visible on Dashboard home page as orange alert box if pending orders exist.
+
+  4. Customer Quote Approval
+
+  1. Go to Dashboard → Quotes
+  2. Click on any quote row
+  3. In the modal, scroll to "Customer Approval" section
+  4. Click "Send for Approval" button
+  5. Copy the approval link shown
+  6. Open link in new tab to see customer approval page
+
+  5. Repair Timeline
+
+  1. Go to Dashboard → Tickets
+  2. Click on any ticket
+  3. Click the "Timeline" tab
+  4. Click "Generate Estimate" button
+
+  6. Warranty Claims
+
+  1. Go to Dashboard → Warranty Claims (in left sidebar)
+  2. Click "New Claim" to create
+  3. Click any row to see details
+  4. Use status buttons to update claim status
+
+  7. Login Page Demo Button
+
+  1. Go to login page (http://localhost:3000)
+  2. Click "Fill Demo Credentials" button
+  3. Credentials auto-fill, then click Sign In
