@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import DetailModal, { DetailRow, StatusBadge } from '@/components/DetailModal'
 import QuoteApprovalBadge from '@/components/QuoteApprovalBadge'
+import { useToast } from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { TableSkeleton } from '@/components/Skeleton'
 
 interface Quote {
   id: string
@@ -30,11 +33,14 @@ interface Quote {
 const statusOptions = ['DRAFT', 'SENT', 'APPROVED', 'REJECTED', 'EXPIRED']
 
 export default function QuotesPage() {
+  const { showToast } = useToast()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [sendingApproval, setSendingApproval] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   useEffect(() => {
     fetchQuotes()
@@ -47,6 +53,7 @@ export default function QuotesPage() {
       if (data.success) setQuotes(data.data.quotes)
     } catch (error) {
       console.error('Failed to fetch quotes:', error)
+      showToast('Failed to load quotes', 'error')
     } finally {
       setLoading(false)
     }
@@ -54,17 +61,23 @@ export default function QuotesPage() {
 
   const handleStatusChange = async (quoteId: string, status: string) => {
     try {
-      await fetch(`/api/quotes/${quoteId}`, {
+      const res = await fetch(`/api/quotes/${quoteId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
-      fetchQuotes()
-      if (selectedQuote?.id === quoteId) {
-        setSelectedQuote({ ...selectedQuote, status })
+      if (res.ok) {
+        showToast('Status updated successfully', 'success')
+        fetchQuotes()
+        if (selectedQuote?.id === quoteId) {
+          setSelectedQuote({ ...selectedQuote, status })
+        }
+      } else {
+        showToast('Failed to update status', 'error')
       }
     } catch (error) {
       console.error('Failed to update quote:', error)
+      showToast('Failed to update status', 'error')
     }
   }
 
@@ -80,20 +93,68 @@ export default function QuotesPage() {
       })
       const data = await res.json()
       if (data.success) {
-        alert(`Approval request sent! Approval URL: ${data.data.approvalUrl}`)
+        showToast('Approval request sent successfully!', 'success')
         fetchQuotes()
         if (selectedQuote?.id === quoteId) {
           setSelectedQuote({ ...selectedQuote, approval: data.data.approval, status: 'SENT' })
         }
       } else {
-        alert(data.error || 'Failed to send approval request')
+        showToast(data.error || 'Failed to send approval request', 'error')
       }
     } catch (error) {
       console.error('Failed to send approval:', error)
-      alert('Failed to send approval request')
+      showToast('Failed to send approval request', 'error')
     } finally {
       setSendingApproval(false)
     }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === quotes.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(quotes.map(q => q.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    try {
+      const res = await fetch('/api/bulk/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'quotes', ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${data.data.deleted} quote(s) deleted`, 'success')
+        setSelectedIds(new Set())
+        fetchQuotes()
+      } else {
+        showToast(data.error || 'Failed to delete quotes', 'error')
+      }
+    } catch {
+      showToast('Failed to delete quotes', 'error')
+    } finally {
+      setDeleteConfirm(false)
+    }
+  }
+
+  const handleExportCSV = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/csv?type=quotes${ids}`, '_blank')
+  }
+
+  const handleExportPDF = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/pdf?type=quotes${ids}`, '_blank')
   }
 
   return (
@@ -103,12 +164,22 @@ export default function QuotesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
           <p className="text-gray-600">Manage repair quotes</p>
         </div>
-        <Link href="/dashboard/quotes/new" className="btn-primary flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Quote
-        </Link>
+        <div className="flex items-center gap-3">
+          <button onClick={handleExportCSV} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            CSV
+          </button>
+          <button onClick={handleExportPDF} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            PDF
+          </button>
+          <Link href="/dashboard/quotes/new" className="btn-primary flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Quote
+          </Link>
+        </div>
       </div>
 
       <div className="card mb-6">
@@ -120,16 +191,29 @@ export default function QuotesPage() {
         </select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-primary-800">{selectedIds.size} item(s) selected</span>
+          <div className="flex gap-2">
+            <button onClick={handleExportCSV} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export CSV</button>
+            <button onClick={handleExportPDF} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export PDF</button>
+            <button onClick={() => setDeleteConfirm(true)} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete Selected</button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 hover:text-gray-800">Clear</button>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          </div>
+          <TableSkeleton rows={8} cols={9} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
+                  <th className="table-header w-10">
+                    <input type="checkbox" checked={selectedIds.size === quotes.length && quotes.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" />
+                  </th>
                   <th className="table-header">Quote #</th>
                   <th className="table-header">Customer</th>
                   <th className="table-header">Ticket</th>
@@ -148,6 +232,9 @@ export default function QuotesPage() {
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => handleRowClick(quote)}
                   >
+                    <td className="table-cell" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(quote.id)} onChange={() => toggleSelect(quote.id)} className="w-4 h-4 rounded" />
+                    </td>
                     <td className="table-cell font-medium text-primary-600">{quote.quoteNumber}</td>
                     <td className="table-cell">
                       {quote.customer.firstName} {quote.customer.lastName}
@@ -184,13 +271,23 @@ export default function QuotesPage() {
                   </tr>
                 ))}
                 {quotes.length === 0 && (
-                  <tr><td colSpan={9} className="py-12 text-center text-gray-500">No quotes found</td></tr>
+                  <tr><td colSpan={10} className="py-12 text-center text-gray-500">No quotes found</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={deleteConfirm}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setDeleteConfirm(false)}
+        title="Delete Quotes"
+        message={`Are you sure you want to delete ${selectedIds.size} quote(s)? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+      />
 
       {/* Quote Detail Modal */}
       <DetailModal

@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import DetailModal, { DetailRow } from '@/components/DetailModal'
+import { useToast } from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { TableSkeleton } from '@/components/Skeleton'
 
 interface Part {
   id: string
@@ -32,6 +35,7 @@ interface Vendor {
 }
 
 export default function InventoryPage() {
+  const { showToast } = useToast()
   const [parts, setParts] = useState<Part[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
@@ -43,6 +47,9 @@ export default function InventoryPage() {
   const [editingPart, setEditingPart] = useState<Part | null>(null)
   const [selectedPart, setSelectedPart] = useState<Part | null>(null)
   const [saving, setSaving] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     sku: '',
     name: '',
@@ -79,6 +86,7 @@ export default function InventoryPage() {
       if (vendorData.success) setVendors(vendorData.data.vendors)
     } catch (error) {
       console.error('Failed to fetch data:', error)
+      showToast('Failed to load inventory data', 'error')
     } finally {
       setLoading(false)
     }
@@ -104,32 +112,85 @@ export default function InventoryPage() {
       })
 
       if (res.ok) {
+        showToast(editingPart ? 'Part updated successfully' : 'Part added successfully', 'success')
         fetchData()
         closeModal()
       } else {
         const data = await res.json()
-        alert(data.error || 'Failed to save part')
+        showToast(data.error || 'Failed to save part', 'error')
       }
     } catch (error) {
       console.error('Failed to save part:', error)
-      alert('Failed to save part')
+      showToast('Failed to save part', 'error')
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (partId: string) => {
-    if (!confirm('Are you sure you want to delete this part?')) return
-
     try {
       const res = await fetch(`/api/parts/${partId}`, { method: 'DELETE' })
       if (res.ok) {
+        showToast('Part deleted successfully', 'success')
         fetchData()
         setSelectedPart(null)
+      } else {
+        showToast('Failed to delete part', 'error')
       }
     } catch (error) {
       console.error('Failed to delete part:', error)
+      showToast('Failed to delete part', 'error')
+    } finally {
+      setSingleDeleteId(null)
     }
+  }
+
+  const handleBulkDelete = async () => {
+    try {
+      const res = await fetch('/api/bulk/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'inventory', ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${data.data.deleted} part(s) deleted`, 'success')
+        setSelectedIds(new Set())
+        fetchData()
+      } else {
+        showToast(data.error || 'Failed to delete parts', 'error')
+      }
+    } catch {
+      showToast('Failed to delete parts', 'error')
+    } finally {
+      setDeleteConfirm(false)
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === parts.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(parts.map(p => p.id)))
+    }
+  }
+
+  const handleExportCSV = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/csv?type=inventory${ids}`, '_blank')
+  }
+
+  const handleExportPDF = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/pdf?type=inventory${ids}`, '_blank')
   }
 
   const openModal = (part?: Part) => {
@@ -190,6 +251,14 @@ export default function InventoryPage() {
           <p className="text-gray-600">Manage parts and accessories</p>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={handleExportCSV} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            CSV
+          </button>
+          <button onClick={handleExportPDF} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            PDF
+          </button>
           <Link href="/dashboard/inventory/auto-orders" className="btn-secondary flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -237,17 +306,31 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-primary-800">{selectedIds.size} item(s) selected</span>
+          <div className="flex gap-2">
+            <button onClick={handleExportCSV} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export CSV</button>
+            <button onClick={handleExportPDF} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export PDF</button>
+            <button onClick={() => setDeleteConfirm(true)} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete Selected</button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 hover:text-gray-800">Clear</button>
+          </div>
+        </div>
+      )}
+
       {/* Parts Table */}
       <div className="card">
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          </div>
+          <TableSkeleton rows={8} cols={9} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
+                  <th className="table-header w-10">
+                    <input type="checkbox" checked={selectedIds.size === parts.length && parts.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" />
+                  </th>
                   <th className="table-header">SKU</th>
                   <th className="table-header">Name</th>
                   <th className="table-header">Category</th>
@@ -265,6 +348,9 @@ export default function InventoryPage() {
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => handleRowClick(part)}
                   >
+                    <td className="table-cell" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(part.id)} onChange={() => toggleSelect(part.id)} className="w-4 h-4 rounded" />
+                    </td>
                     <td className="table-cell font-mono text-sm">{part.sku}</td>
                     <td className="table-cell">
                       <p className="font-medium">{part.name}</p>
@@ -298,7 +384,7 @@ export default function InventoryPage() {
                 ))}
                 {parts.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-500">No parts found</td>
+                    <td colSpan={9} className="py-12 text-center text-gray-500">No parts found</td>
                   </tr>
                 )}
               </tbody>
@@ -463,7 +549,7 @@ export default function InventoryPage() {
 
             <div className="flex justify-between mt-6">
               <button
-                onClick={() => handleDelete(selectedPart.id)}
+                onClick={() => setSingleDeleteId(selectedPart.id)}
                 className="btn-secondary text-red-600 hover:bg-red-50"
               >
                 Delete Part
@@ -480,6 +566,28 @@ export default function InventoryPage() {
           </div>
         )}
       </DetailModal>
+
+      {/* Bulk Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setDeleteConfirm(false)}
+        title="Delete Parts"
+        message={`Are you sure you want to delete ${selectedIds.size} part(s)? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+      />
+
+      {/* Single Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!singleDeleteId}
+        onConfirm={() => { if (singleDeleteId) handleDelete(singleDeleteId) }}
+        onCancel={() => setSingleDeleteId(null)}
+        title="Delete Part"
+        message="Are you sure you want to delete this part? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   )
 }

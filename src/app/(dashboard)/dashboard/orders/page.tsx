@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react'
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import DetailModal, { DetailRow, StatusBadge } from '@/components/DetailModal'
+import { useToast } from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { TableSkeleton } from '@/components/Skeleton'
 
 interface Order {
   id: string
@@ -31,6 +34,7 @@ interface Part {
 const statusOptions = ['PENDING', 'ORDERED', 'SHIPPED', 'RECEIVED', 'CANCELLED']
 
 export default function OrdersPage() {
+  const { showToast } = useToast()
   const [orders, setOrders] = useState<Order[]>([])
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [parts, setParts] = useState<Part[]>([])
@@ -39,6 +43,8 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [saving, setSaving] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [formData, setFormData] = useState({
     vendorId: '',
     expectedDate: '',
@@ -69,6 +75,7 @@ export default function OrdersPage() {
       if (partsData.success) setParts(partsData.data.parts)
     } catch (error) {
       console.error('Failed to fetch data:', error)
+      showToast('Failed to load orders', 'error')
     } finally {
       setLoading(false)
     }
@@ -109,15 +116,16 @@ export default function OrdersPage() {
       })
 
       if (res.ok) {
+        showToast('Order created successfully', 'success')
         fetchData()
         closeModal()
       } else {
         const data = await res.json()
-        alert(data.error || 'Failed to create order')
+        showToast(data.error || 'Failed to create order', 'error')
       }
     } catch (error) {
       console.error('Failed to create order:', error)
-      alert('Failed to create order')
+      showToast('Failed to create order', 'error')
     } finally {
       setSaving(false)
     }
@@ -125,17 +133,23 @@ export default function OrdersPage() {
 
   const handleUpdateStatus = async (orderId: string, status: string) => {
     try {
-      await fetch(`/api/orders/${orderId}`, {
+      const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       })
-      fetchData()
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder({ ...selectedOrder, status })
+      if (res.ok) {
+        showToast('Status updated successfully', 'success')
+        fetchData()
+        if (selectedOrder?.id === orderId) {
+          setSelectedOrder({ ...selectedOrder, status })
+        }
+      } else {
+        showToast('Failed to update status', 'error')
       }
     } catch (error) {
       console.error('Failed to update order:', error)
+      showToast('Failed to update status', 'error')
     }
   }
 
@@ -158,6 +172,54 @@ export default function OrdersPage() {
     setSelectedOrder(order)
   }
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === orders.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(orders.map(o => o.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    try {
+      const res = await fetch('/api/bulk/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'orders', ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${data.data.deleted} order(s) deleted`, 'success')
+        setSelectedIds(new Set())
+        fetchData()
+      } else {
+        showToast(data.error || 'Failed to delete orders', 'error')
+      }
+    } catch {
+      showToast('Failed to delete orders', 'error')
+    } finally {
+      setDeleteConfirm(false)
+    }
+  }
+
+  const handleExportCSV = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/csv?type=orders${ids}`, '_blank')
+  }
+
+  const handleExportPDF = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/pdf?type=orders${ids}`, '_blank')
+  }
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
@@ -165,12 +227,22 @@ export default function OrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
           <p className="text-gray-600">Manage parts orders from vendors</p>
         </div>
-        <button onClick={openModal} className="btn-primary flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Order
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={handleExportCSV} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            CSV
+          </button>
+          <button onClick={handleExportPDF} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            PDF
+          </button>
+          <button onClick={openModal} className="btn-primary flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Order
+          </button>
+        </div>
       </div>
 
       {/* Filter */}
@@ -183,17 +255,31 @@ export default function OrdersPage() {
         </select>
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-primary-800">{selectedIds.size} item(s) selected</span>
+          <div className="flex gap-2">
+            <button onClick={handleExportCSV} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export CSV</button>
+            <button onClick={handleExportPDF} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export PDF</button>
+            <button onClick={() => setDeleteConfirm(true)} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete Selected</button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 hover:text-gray-800">Clear</button>
+          </div>
+        </div>
+      )}
+
       {/* Orders Table */}
       <div className="card">
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          </div>
+          <TableSkeleton rows={8} cols={8} />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
+                  <th className="table-header w-10">
+                    <input type="checkbox" checked={selectedIds.size === orders.length && orders.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" />
+                  </th>
                   <th className="table-header">Order #</th>
                   <th className="table-header">Vendor</th>
                   <th className="table-header">Items</th>
@@ -211,6 +297,9 @@ export default function OrdersPage() {
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => handleRowClick(order)}
                   >
+                    <td className="table-cell" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(order.id)} onChange={() => toggleSelect(order.id)} className="w-4 h-4 rounded" />
+                    </td>
                     <td className="table-cell font-medium text-primary-600">{order.orderNumber}</td>
                     <td className="table-cell">{order.vendor.name}</td>
                     <td className="table-cell">{order.items.length} items</td>
@@ -234,7 +323,7 @@ export default function OrdersPage() {
                   </tr>
                 ))}
                 {orders.length === 0 && (
-                  <tr><td colSpan={8} className="py-12 text-center text-gray-500">No orders found</td></tr>
+                  <tr><td colSpan={9} className="py-12 text-center text-gray-500">No orders found</td></tr>
                 )}
               </tbody>
             </table>
@@ -304,6 +393,17 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Dialog for Bulk Delete */}
+      <ConfirmDialog
+        isOpen={deleteConfirm}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setDeleteConfirm(false)}
+        title="Delete Orders"
+        message={`Are you sure you want to delete ${selectedIds.size} order(s)? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+      />
 
       {/* Order Detail Modal */}
       <DetailModal

@@ -31,6 +31,7 @@ async function clearDatabase() {
   await prisma.service.deleteMany({})
   await prisma.category.deleteMany({})
   await prisma.vendor.deleteMany({})
+  await prisma.passwordResetToken.deleteMany({})
   await prisma.user.deleteMany({})
   await prisma.setting.deleteMany({})
   console.log('Database cleared!')
@@ -75,32 +76,32 @@ async function main() {
     prisma.user.upsert({
       where: { email: 'admin@techfixpro.com' },
       update: {},
-      create: { email: 'admin@techfixpro.com', password: hashedPassword, firstName: 'John', lastName: 'Admin', role: UserRole.ADMIN, phone: '(415) 555-0001' },
+      create: { email: 'admin@techfixpro.com', password: hashedPassword, firstName: 'John', lastName: 'Admin', role: UserRole.ADMIN, phone: '(415) 555-0001', emailVerified: true },
     }),
     prisma.user.upsert({
       where: { email: 'manager@techfixpro.com' },
       update: {},
-      create: { email: 'manager@techfixpro.com', password: hashedPassword, firstName: 'Sarah', lastName: 'Manager', role: UserRole.MANAGER, phone: '(415) 555-0002' },
+      create: { email: 'manager@techfixpro.com', password: hashedPassword, firstName: 'Sarah', lastName: 'Manager', role: UserRole.MANAGER, phone: '(415) 555-0002', emailVerified: true },
     }),
     prisma.user.upsert({
       where: { email: 'mike@techfixpro.com' },
       update: {},
-      create: { email: 'mike@techfixpro.com', password: hashedPassword, firstName: 'Mike', lastName: 'Technician', role: UserRole.TECHNICIAN, phone: '(415) 555-0003' },
+      create: { email: 'mike@techfixpro.com', password: hashedPassword, firstName: 'Mike', lastName: 'Technician', role: UserRole.TECHNICIAN, phone: '(415) 555-0003', emailVerified: true },
     }),
     prisma.user.upsert({
       where: { email: 'lisa@techfixpro.com' },
       update: {},
-      create: { email: 'lisa@techfixpro.com', password: hashedPassword, firstName: 'Lisa', lastName: 'Chen', role: UserRole.TECHNICIAN, phone: '(415) 555-0004' },
+      create: { email: 'lisa@techfixpro.com', password: hashedPassword, firstName: 'Lisa', lastName: 'Chen', role: UserRole.TECHNICIAN, phone: '(415) 555-0004', emailVerified: true },
     }),
     prisma.user.upsert({
       where: { email: 'david@techfixpro.com' },
       update: {},
-      create: { email: 'david@techfixpro.com', password: hashedPassword, firstName: 'David', lastName: 'Park', role: UserRole.TECHNICIAN, phone: '(415) 555-0006' },
+      create: { email: 'david@techfixpro.com', password: hashedPassword, firstName: 'David', lastName: 'Park', role: UserRole.TECHNICIAN, phone: '(415) 555-0006', emailVerified: true },
     }),
     prisma.user.upsert({
       where: { email: 'reception@techfixpro.com' },
       update: {},
-      create: { email: 'reception@techfixpro.com', password: hashedPassword, firstName: 'Emily', lastName: 'Receptionist', role: UserRole.RECEPTIONIST, phone: '(415) 555-0005' },
+      create: { email: 'reception@techfixpro.com', password: hashedPassword, firstName: 'Emily', lastName: 'Receptionist', role: UserRole.RECEPTIONIST, phone: '(415) 555-0005', emailVerified: true },
     }),
   ])
   console.log('Users created:', users.length)
@@ -567,7 +568,7 @@ async function main() {
 
   await Promise.all(
     salesData.map(async (s) => {
-      const items = s.items.map((i) => ({
+      const items = s.items.map((i: { svcIdx?: number; partIdx?: number; desc: string; price: number }) => ({
         itemType: i.svcIdx !== undefined ? 'service' : (i.partIdx !== undefined ? 'part' : 'accessory'),
         serviceId: i.svcIdx !== undefined ? services[i.svcIdx].id : null,
         partId: i.partIdx !== undefined ? parts[i.partIdx].id : null,
@@ -754,8 +755,8 @@ async function main() {
           claimAmount: w.amount,
           approvedAmount: w.approved || null,
           submittedAt: daysAgo(w.daysAgo),
-          reviewedAt: [WarrantyClaimStatus.UNDER_REVIEW, WarrantyClaimStatus.APPROVED, WarrantyClaimStatus.REJECTED, WarrantyClaimStatus.COMPLETED].includes(w.status) ? daysAgo(Math.max(0, w.daysAgo - 2)) : null,
-          resolvedAt: [WarrantyClaimStatus.APPROVED, WarrantyClaimStatus.REJECTED, WarrantyClaimStatus.COMPLETED].includes(w.status) ? daysAgo(Math.max(0, w.daysAgo - 3)) : null,
+          reviewedAt: ([WarrantyClaimStatus.UNDER_REVIEW, WarrantyClaimStatus.APPROVED, WarrantyClaimStatus.REJECTED, WarrantyClaimStatus.COMPLETED] as string[]).includes(w.status) ? daysAgo(Math.max(0, w.daysAgo - 2)) : null,
+          resolvedAt: ([WarrantyClaimStatus.APPROVED, WarrantyClaimStatus.REJECTED, WarrantyClaimStatus.COMPLETED] as string[]).includes(w.status) ? daysAgo(Math.max(0, w.daysAgo - 3)) : null,
           statusHistory: {
             create: [
               { toStatus: WarrantyClaimStatus.SUBMITTED, notes: 'Claim submitted', changedBy: 'System' },

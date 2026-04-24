@@ -18,6 +18,8 @@ model User {
   phone         String?
   avatar        String?
   isActive      Boolean   @default(true)
+  emailVerified Boolean   @default(false)
+  emailVerifyToken String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -27,6 +29,7 @@ model User {
   sales         Sale[]
   quotes        Quote[]
   autoOrderApprovals AutoOrderLog[] @relation("ApprovedBy")
+  passwordResetTokens PasswordResetToken[]
 }
 
 enum UserRole {
@@ -34,6 +37,16 @@ enum UserRole {
   MANAGER
   TECHNICIAN
   RECEPTIONIST
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
 }
 
 // Customer Management

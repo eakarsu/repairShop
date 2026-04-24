@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency, formatDate, getStatusColor, getPriorityColor, getAutoOrderStatusColor } from '@/lib/utils'
 import DetailModal, { DetailRow, StatusBadge } from '@/components/DetailModal'
+import { useToast } from '@/components/Toast'
+import { StatCardSkeleton } from '@/components/Skeleton'
 
 interface DashboardStats {
   totalTickets: number
@@ -44,6 +47,8 @@ interface PendingAutoOrder {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const { showToast } = useToast()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<DashboardStats['recentTickets'][0] | null>(null)
@@ -93,9 +98,13 @@ export default function DashboardPage() {
       const data = await res.json()
       if (data.success) {
         setPendingAutoOrders(prev => prev.filter(o => o.id !== orderId))
+        showToast('Auto-order approved successfully', 'success')
+      } else {
+        showToast('Failed to approve auto-order', 'error')
       }
     } catch (error) {
       console.error('Failed to approve auto-order:', error)
+      showToast('Failed to approve auto-order', 'error')
     } finally {
       setApproving(null)
     }
@@ -104,11 +113,11 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-48"></div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-gray-200 rounded-xl"></div>
+              <StatCardSkeleton key={i} />
             ))}
           </div>
         </div>
@@ -122,24 +131,28 @@ export default function DashboardPage() {
       value: stats?.totalTickets || 0,
       icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
       color: 'bg-blue-500',
+      href: '/dashboard/tickets',
     },
     {
       title: 'Open Tickets',
       value: stats?.openTickets || 0,
       icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
       color: 'bg-yellow-500',
+      href: '/dashboard/tickets?status=RECEIVED',
     },
     {
       title: 'Completed Today',
       value: stats?.completedToday || 0,
       icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
       color: 'bg-green-500',
+      href: '/dashboard/tickets?status=COMPLETED',
     },
     {
       title: 'Revenue (30 days)',
       value: formatCurrency(stats?.revenue || 0),
       icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
       color: 'bg-purple-500',
+      href: '/dashboard/reports',
     },
   ]
 
@@ -154,7 +167,11 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat) => (
-          <div key={stat.title} className="card hover:shadow-lg transition-shadow cursor-pointer">
+          <div
+            key={stat.title}
+            className="card hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push(stat.href)}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">{stat.title}</p>
@@ -310,7 +327,11 @@ export default function DashboardPage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Tickets by Status</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4">
           {stats?.ticketsByStatus?.map((item) => (
-            <div key={item.status} className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+            <div
+              key={item.status}
+              className="text-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+              onClick={() => router.push(`/dashboard/tickets?status=${item.status}`)}
+            >
               <p className="text-2xl font-bold text-gray-900">{item.count}</p>
               <p className="text-xs text-gray-500 mt-1">{item.status.replace('_', ' ')}</p>
             </div>

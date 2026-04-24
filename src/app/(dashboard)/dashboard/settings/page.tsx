@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import DetailModal, { DetailRow } from '@/components/DetailModal'
+import { useToast } from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { getPasswordStrength } from '@/lib/validation'
 
 interface Settings {
   shop_name: string
@@ -32,7 +35,11 @@ interface User {
 const roleOptions = ['ADMIN', 'MANAGER', 'TECHNICIAN', 'RECEPTIONIST']
 
 export default function SettingsPage() {
+  const { showToast } = useToast()
   const [activeTab, setActiveTab] = useState('shop')
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [changingPassword, setChangingPassword] = useState(false)
   const [settings, setSettings] = useState<Settings>({
     shop_name: '',
     shop_address: '',
@@ -101,13 +108,13 @@ export default function SettingsPage() {
       })
       const data = await res.json()
       if (data.success) {
-        alert('Settings saved successfully!')
+        showToast('Settings saved successfully!', 'success')
       } else {
-        alert(data.error || 'Failed to save settings')
+        showToast(data.error || 'Failed to save settings', 'error')
       }
     } catch (error) {
       console.error('Failed to save settings:', error)
-      alert('Failed to save settings')
+      showToast('Failed to save settings', 'error')
     } finally {
       setSaving(false)
     }
@@ -164,31 +171,65 @@ export default function SettingsPage() {
       if (data.success) {
         fetchData()
         closeUserModal()
+        showToast(editingUser ? 'User updated successfully!' : 'User created successfully!', 'success')
       } else {
-        alert(data.error || 'Failed to save user')
+        showToast(data.error || 'Failed to save user', 'error')
       }
     } catch (error) {
       console.error('Failed to save user:', error)
-      alert('Failed to save user')
+      showToast('Failed to save user', 'error')
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return
+    setDeleteConfirm(userId)
+  }
 
+  const confirmDeleteUser = async () => {
+    if (!deleteConfirm) return
     try {
-      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/users/${deleteConfirm}`, { method: 'DELETE' })
       if (res.ok) {
         fetchData()
         setSelectedUser(null)
+        showToast('User deleted successfully', 'success')
       } else {
         const data = await res.json()
-        alert(data.error || 'Failed to delete user')
+        showToast(data.error || 'Failed to delete user', 'error')
       }
     } catch (error) {
       console.error('Failed to delete user:', error)
+      showToast('Failed to delete user', 'error')
+    } finally {
+      setDeleteConfirm(null)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showToast('Passwords do not match', 'error')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast('Password changed successfully!', 'success')
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      } else {
+        showToast(data.error || 'Failed to change password', 'error')
+      }
+    } catch {
+      showToast('Failed to change password', 'error')
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -227,7 +268,7 @@ export default function SettingsPage() {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex gap-8">
-          {['shop', 'users', 'services'].map((tab) => (
+          {['shop', 'users', 'security', 'services'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -445,6 +486,56 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {activeTab === 'security' && (
+        <div className="card max-w-lg">
+          <h3 className="font-semibold mb-4">Change Password</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <input
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                className="input-field"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <input
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                className="input-field"
+              />
+              {passwordForm.newPassword && (
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className={`h-full ${getPasswordStrength(passwordForm.newPassword).color} transition-all`} style={{ width: `${(getPasswordStrength(passwordForm.newPassword).score / 6) * 100}%` }} />
+                  </div>
+                  <span className="text-xs font-medium text-gray-600">{getPasswordStrength(passwordForm.newPassword).label}</span>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <input
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                className="input-field"
+              />
+            </div>
+            <button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+              className="btn-primary"
+            >
+              {changingPassword ? 'Changing...' : 'Change Password'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'services' && (
         <div className="card">
           <h3 className="font-semibold mb-4">Service Management</h3>
@@ -540,6 +631,16 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteConfirm}
+        onConfirm={confirmDeleteUser}
+        onCancel={() => setDeleteConfirm(null)}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
 
       {/* User Detail Modal */}
       <DetailModal

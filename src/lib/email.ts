@@ -127,3 +127,43 @@ If you have any questions, please contact us directly.
 
   return { subject, html, text }
 }
+
+export function generatePasswordResetEmail(
+  firstName: string,
+  resetLink: string
+): { subject: string; html: string } {
+  return {
+    subject: 'Password Reset Request - RepairShop Pro',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #2563eb;">Password Reset</h2>
+        <p>Hi ${firstName},</p>
+        <p>You requested a password reset. Click the button below to set a new password:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${resetLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">Reset Password</a>
+        </p>
+        <p style="font-size: 14px; color: #6b7280;">This link expires in 1 hour. If you didn't request this, please ignore this email.</p>
+      </div>
+    `,
+  }
+}
+
+export function generateVerificationEmail(
+  firstName: string,
+  verifyLink: string
+): { subject: string; html: string } {
+  return {
+    subject: 'Verify Your Email - RepairShop Pro',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #2563eb;">Verify Your Email</h2>
+        <p>Hi ${firstName},</p>
+        <p>Thank you for registering! Please verify your email address by clicking the button below:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${verifyLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">Verify Email</a>
+        </p>
+        <p style="font-size: 14px; color: #6b7280;">If you didn't create an account, please ignore this email.</p>
+      </div>
+    `,
+  }
+}

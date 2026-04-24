@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 interface User {
   id: string
@@ -152,7 +153,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content */}
       <main className={`transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <div className="min-h-screen">{children}</div>
+        <div className="min-h-screen"><ErrorBoundary>{children}</ErrorBoundary></div>
       </main>
     </div>
   )

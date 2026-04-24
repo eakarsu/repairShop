@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
 import DetailModal, { DetailRow } from '@/components/DetailModal'
+import { useToast } from '@/components/Toast'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { TableSkeleton } from '@/components/Skeleton'
 
 interface Customer {
   id: string
@@ -22,12 +25,16 @@ interface Customer {
 }
 
 export default function CustomersPage() {
+  const { showToast } = useToast()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchCustomers()
@@ -49,30 +56,88 @@ export default function CustomersPage() {
       }
     } catch (error) {
       console.error('Failed to fetch customers:', error)
+      showToast('Failed to load customers', 'error')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this customer?')) return
+    setSingleDeleteId(id)
+  }
 
+  const confirmSingleDelete = async () => {
+    if (!singleDeleteId) return
     try {
-      const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/customers/${singleDeleteId}`, { method: 'DELETE' })
       if (res.ok) {
+        showToast('Customer deleted successfully', 'success')
         fetchCustomers()
-        if (selectedCustomer?.id === id) {
+        if (selectedCustomer?.id === singleDeleteId) {
           setSelectedCustomer(null)
         }
+      } else {
+        showToast('Failed to delete customer', 'error')
       }
     } catch (error) {
       console.error('Failed to delete customer:', error)
+      showToast('Failed to delete customer', 'error')
+    } finally {
+      setSingleDeleteId(null)
     }
   }
 
   const handleRowClick = (customer: Customer) => {
     setSelectedCustomer(customer)
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === customers.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(customers.map(c => c.id)))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    try {
+      const res = await fetch('/api/bulk/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'customers', ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast(`${data.data.deleted} customer(s) deleted`, 'success')
+        setSelectedIds(new Set())
+        fetchCustomers()
+      } else {
+        showToast(data.error || 'Failed to delete customers', 'error')
+      }
+    } catch {
+      showToast('Failed to delete customers', 'error')
+    } finally {
+      setDeleteConfirm(false)
+    }
+  }
+
+  const handleExportCSV = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/csv?type=customers${ids}`, '_blank')
+  }
+
+  const handleExportPDF = () => {
+    const ids = selectedIds.size > 0 ? `&ids=${Array.from(selectedIds).join(',')}` : ''
+    window.open(`/api/export/pdf?type=customers${ids}`, '_blank')
   }
 
   return (
@@ -83,12 +148,22 @@ export default function CustomersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
           <p className="text-gray-600">Manage your customer database</p>
         </div>
-        <Link href="/dashboard/customers/new" className="btn-primary flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Customer
-        </Link>
+        <div className="flex items-center gap-3">
+          <button onClick={handleExportCSV} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            CSV
+          </button>
+          <button onClick={handleExportPDF} className="btn-secondary text-sm flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            PDF
+          </button>
+          <Link href="/dashboard/customers/new" className="btn-primary flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Customer
+          </Link>
+        </div>
       </div>
 
       {/* Search */}
@@ -102,18 +177,32 @@ export default function CustomersPage() {
         />
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm font-medium text-primary-800">{selectedIds.size} item(s) selected</span>
+          <div className="flex gap-2">
+            <button onClick={handleExportCSV} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export CSV</button>
+            <button onClick={handleExportPDF} className="text-sm text-primary-700 hover:text-primary-900 font-medium">Export PDF</button>
+            <button onClick={() => setDeleteConfirm(true)} className="text-sm text-red-600 hover:text-red-800 font-medium">Delete Selected</button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-sm text-gray-600 hover:text-gray-800">Clear</button>
+          </div>
+        </div>
+      )}
+
       {/* Customers Table */}
       <div className="card">
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          </div>
+          <TableSkeleton rows={8} cols={8} />
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
+                    <th className="table-header w-10">
+                      <input type="checkbox" checked={selectedIds.size === customers.length && customers.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" />
+                    </th>
                     <th className="table-header">Name</th>
                     <th className="table-header">Contact</th>
                     <th className="table-header">Location</th>
@@ -130,6 +219,9 @@ export default function CustomersPage() {
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => handleRowClick(customer)}
                     >
+                      <td className="table-cell" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(customer.id)} onChange={() => toggleSelect(customer.id)} className="w-4 h-4 rounded" />
+                      </td>
                       <td className="table-cell">
                         <span className="text-primary-600 font-medium">
                           {customer.firstName} {customer.lastName}
@@ -165,7 +257,7 @@ export default function CustomersPage() {
                   ))}
                   {customers.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-gray-500">
+                      <td colSpan={8} className="py-12 text-center text-gray-500">
                         No customers found
                       </td>
                     </tr>
@@ -199,6 +291,28 @@ export default function CustomersPage() {
           </>
         )}
       </div>
+
+      {/* Bulk Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirm}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setDeleteConfirm(false)}
+        title="Delete Customers"
+        message={`Are you sure you want to delete ${selectedIds.size} customer(s)? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+      />
+
+      {/* Single Delete Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!singleDeleteId}
+        onConfirm={confirmSingleDelete}
+        onCancel={() => setSingleDeleteId(null)}
+        title="Delete Customer"
+        message="Are you sure you want to delete this customer? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
 
       {/* Customer Detail Modal */}
       <DetailModal
