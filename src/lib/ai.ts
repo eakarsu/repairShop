@@ -521,3 +521,72 @@ Return JSON: {"damageType":"type","severity":"Low|Moderate|Severe","description"
     return fallback
   }
 }
+
+// Predictive Maintenance Recommendations
+// Implements audit batch_11 §repairShop suggestion #6.
+export interface PredictiveMaintenanceResult {
+  riskLevel: 'Low' | 'Medium' | 'High'
+  expectedFailureWindow: string // e.g. "3-6 months", "12+ months"
+  preventiveActions: {
+    action: string
+    rationale: string
+    estimatedCost: number
+    priority: 'Low' | 'Medium' | 'High'
+  }[]
+  partsToWatch: string[]
+  diagnosticChecksRecommended: string[]
+  notes: string
+}
+
+export async function getPredictiveMaintenance(
+  deviceType: string,
+  brand: string,
+  model: string,
+  ageMonths: number,
+  pastTicketCount: number,
+  pastIssueSummaries: string[]
+): Promise<PredictiveMaintenanceResult> {
+  const fallback: PredictiveMaintenanceResult = {
+    riskLevel: 'Medium',
+    expectedFailureWindow: 'Unknown — insufficient signal',
+    preventiveActions: [
+      {
+        action: 'General inspection and cleaning',
+        rationale: 'Routine preventive maintenance for any device of this age',
+        estimatedCost: 30,
+        priority: 'Medium',
+      },
+    ],
+    partsToWatch: ['Battery', 'Cooling fans', 'Connectors'],
+    diagnosticChecksRecommended: ['Run vendor diagnostic suite', 'Visual inspection'],
+    notes: 'Automated fallback — verify with hands-on inspection.',
+  }
+
+  try {
+    const issuesBlock = pastIssueSummaries.length > 0
+      ? pastIssueSummaries.map((s, i) => `${i + 1}. ${s}`).join('\n')
+      : '(no prior tickets recorded)'
+
+    const content = await callOpenRouter([
+      {
+        role: 'system',
+        content: `You are an expert repair technician assessing predictive maintenance needs based on device age and prior repair history. Respond with ONLY valid JSON.`,
+      },
+      {
+        role: 'user',
+        content: `Device: ${deviceType} ${brand} ${model}
+Age: ${ageMonths} months
+Number of prior repair tickets: ${pastTicketCount}
+Past issues:
+${issuesBlock}
+
+Return JSON: {"riskLevel":"Low|Medium|High","expectedFailureWindow":"3-6 months","preventiveActions":[{"action":"...","rationale":"...","estimatedCost":50,"priority":"Medium"}],"partsToWatch":["..."],"diagnosticChecksRecommended":["..."],"notes":"..."}`,
+      },
+    ])
+
+    return safeJSONParse<PredictiveMaintenanceResult>(content, fallback)
+  } catch (error) {
+    console.error('AI Predictive Maintenance error:', error)
+    return fallback
+  }
+}

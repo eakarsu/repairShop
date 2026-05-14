@@ -44,6 +44,15 @@ interface RepairGuide {
   difficultyLevel: string
 }
 
+interface PredictiveMaintenanceResult {
+  riskLevel: 'Low' | 'Medium' | 'High'
+  expectedFailureWindow: string
+  preventiveActions: { action: string; rationale: string; estimatedCost: number; priority: 'Low' | 'Medium' | 'High' }[]
+  partsToWatch: string[]
+  diagnosticChecksRecommended: string[]
+  notes: string
+}
+
 export default function AIToolsPage() {
   const [activeTab, setActiveTab] = useState('diagnostic')
   const [loading, setLoading] = useState(false)
@@ -64,6 +73,8 @@ export default function AIToolsPage() {
   const [guideResult, setGuideResult] = useState<RepairGuide | null>(null)
   const [warrantyResult, setWarrantyResult] = useState<{ status: string; message: string; details: string } | null>(null)
   const [chatResponse, setChatResponse] = useState('')
+  const [predMaint, setPredMaint] = useState({ deviceType: '', brand: '', model: '', ageMonths: '12', pastTicketCount: '0', pastIssues: '' })
+  const [predMaintResult, setPredMaintResult] = useState<PredictiveMaintenanceResult | null>(null)
 
   // Load tickets when chat tab is active
   useEffect(() => {
@@ -214,6 +225,40 @@ export default function AIToolsPage() {
     }
   }
 
+  const handlePredictiveMaintenance = async () => {
+    setLoading(true)
+    setError(null)
+    setPredMaintResult(null)
+    try {
+      const res = await fetch('/api/ai/predictive-maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceType: predMaint.deviceType,
+          brand: predMaint.brand,
+          model: predMaint.model,
+          ageMonths: Number(predMaint.ageMonths) || 0,
+          pastTicketCount: Number(predMaint.pastTicketCount) || 0,
+          pastIssues: predMaint.pastIssues
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPredMaintResult(data.data)
+      } else {
+        setError(data.error || 'Failed to get predictive maintenance assessment')
+      }
+    } catch (err) {
+      console.error('Predictive maintenance failed:', err)
+      setError('Network error. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Clear results when switching tabs
   const switchTab = (tabId: string) => {
     setActiveTab(tabId)
@@ -261,6 +306,7 @@ export default function AIToolsPage() {
     { id: 'guide', name: 'Repair Guide', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
     { id: 'warranty', name: 'Warranty Check', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
     { id: 'chat', name: 'Customer Bot', icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z' },
+    { id: 'predmaint', name: 'Predictive Maintenance', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
   ]
 
   return (
@@ -452,6 +498,48 @@ export default function AIToolsPage() {
               </div>
               <button onClick={handleCustomerQuestion} disabled={loading || !customerQuestion} className="w-full btn-primary">
                 {loading ? 'Thinking...' : 'Get Response'}
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'predmaint' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Device Type</label>
+                  <select value={predMaint.deviceType} onChange={(e) => setPredMaint({ ...predMaint, deviceType: e.target.value })} className="select-field">
+                    <option value="">Select...</option>
+                    <option value="Smartphone">Smartphone</option>
+                    <option value="Tablet">Tablet</option>
+                    <option value="Laptop">Laptop</option>
+                    <option value="Smartwatch">Smartwatch</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Brand</label>
+                  <input type="text" value={predMaint.brand} onChange={(e) => setPredMaint({ ...predMaint, brand: e.target.value })} className="input-field" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Model</label>
+                <input type="text" value={predMaint.model} onChange={(e) => setPredMaint({ ...predMaint, model: e.target.value })} className="input-field" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Age (months)</label>
+                  <input type="number" value={predMaint.ageMonths} onChange={(e) => setPredMaint({ ...predMaint, ageMonths: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Past Ticket Count</label>
+                  <input type="number" value={predMaint.pastTicketCount} onChange={(e) => setPredMaint({ ...predMaint, pastTicketCount: e.target.value })} className="input-field" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Past Issues (one per line)</label>
+                <textarea value={predMaint.pastIssues} onChange={(e) => setPredMaint({ ...predMaint, pastIssues: e.target.value })} className="input-field" rows={3} placeholder="Cracked screen&#10;Battery drain" />
+              </div>
+              <button onClick={handlePredictiveMaintenance} disabled={loading || !predMaint.deviceType} className="w-full btn-primary">
+                {loading ? 'Analyzing...' : 'Predict Maintenance Needs'}
               </button>
             </div>
           )}
@@ -746,7 +834,69 @@ export default function AIToolsPage() {
             </div>
           )}
 
-          {!diagnosticResult && !quoteResult && !guideResult && !warrantyResult && !chatResponse && !loading && !error && (
+          {activeTab === 'predmaint' && predMaintResult && !loading && (
+            <div className="space-y-6">
+              <div className={`rounded-2xl p-6 text-center text-white ${
+                predMaintResult.riskLevel === 'High' ? 'bg-gradient-to-br from-red-500 to-rose-600' :
+                predMaintResult.riskLevel === 'Medium' ? 'bg-gradient-to-br from-yellow-500 to-amber-600' :
+                'bg-gradient-to-br from-green-500 to-emerald-600'
+              }`}>
+                <p className="text-white/80 text-sm uppercase tracking-wider mb-1">Risk Level</p>
+                <p className="text-3xl font-bold mb-2">{predMaintResult.riskLevel}</p>
+                <p className="text-white/90">Expected window: {predMaintResult.expectedFailureWindow}</p>
+              </div>
+
+              {predMaintResult.preventiveActions?.length > 0 && (
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-gray-800 mb-3">Preventive Actions</h4>
+                  <div className="space-y-2">
+                    {predMaintResult.preventiveActions.map((a, i) => (
+                      <div key={i} className="bg-white border border-gray-200 rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-medium text-gray-800">{a.action}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            a.priority === 'High' ? 'bg-red-100 text-red-700' :
+                            a.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-green-100 text-green-700'
+                          }`}>{a.priority}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">{a.rationale}</p>
+                        <p className="text-sm text-gray-500 mt-1">Est. cost: {formatCurrency(a.estimatedCost)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {predMaintResult.partsToWatch?.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">Parts to Watch</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {predMaintResult.partsToWatch.map((p, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-white rounded-full text-sm border border-gray-200">{p}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {predMaintResult.diagnosticChecksRecommended?.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">Recommended Diagnostic Checks</h4>
+                  <ul className="space-y-1 list-disc list-inside text-gray-700">
+                    {predMaintResult.diagnosticChecksRecommended.map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <p className="text-gray-700">{predMaintResult.notes}</p>
+              </div>
+            </div>
+          )}
+
+          {!diagnosticResult && !quoteResult && !guideResult && !warrantyResult && !chatResponse && !predMaintResult && !loading && !error && (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
