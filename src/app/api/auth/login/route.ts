@@ -5,7 +5,9 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const body = await request.json()
+    const email = String(body?.email || '').trim().toLowerCase()
+    const password = String(body?.password || '')
 
     if (!email || !password) {
       return NextResponse.json(
@@ -45,7 +47,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60,
       path: '/',
     })
 

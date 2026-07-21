@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
   try {
     const { to, body } = await request.json()
     if (!to || !body) return NextResponse.json({ error: 'to and body required' }, { status: 400 })
-    return NextResponse.json({ ok: true, provider: 'twilio', to, simulated: true })
+    void to
+    return NextResponse.json({ error: 'Twilio adapter is not implemented; no message was sent' }, { status: 501 })
   } catch (e) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }

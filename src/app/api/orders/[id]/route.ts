@@ -54,19 +54,14 @@ export async function PUT(
         include: { items: true },
       })
 
-      if (order) {
-        for (const item of order.items) {
-          await prisma.part.update({
-            where: { id: item.partId },
-            data: { quantity: { increment: item.quantity } },
-          })
-
-          await prisma.orderItem.update({
-            where: { id: item.id },
-            data: { receivedQty: item.quantity },
-          })
-        }
+      if (!order) return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 })
+      if (order.status === OrderStatus.RECEIVED) {
+        return NextResponse.json({ success: false, error: 'Order was already received' }, { status: 409 })
       }
+      await prisma.$transaction(order.items.flatMap((item) => [
+        prisma.part.update({ where: { id: item.partId }, data: { quantity: { increment: item.quantity } } }),
+        prisma.orderItem.update({ where: { id: item.id }, data: { receivedQty: item.quantity } }),
+      ]))
 
       data.receivedDate = new Date()
     }

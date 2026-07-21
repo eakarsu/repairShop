@@ -69,6 +69,17 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json()
 
+    if (data.ticketId) {
+      const ticket = await prisma.repairTicket.findUnique({ where: { id: data.ticketId } })
+      if (!ticket) return NextResponse.json({ success: false, error: 'Ticket not found' }, { status: 404 })
+      if (ticket.status !== 'READY_PICKUP') {
+        return NextResponse.json({ success: false, error: 'Ticket must be READY_PICKUP before checkout' }, { status: 409 })
+      }
+    }
+    if (!data.paymentStatus) {
+      return NextResponse.json({ success: false, error: 'Explicit paymentStatus is required' }, { status: 400 })
+    }
+
     // Generate unique sale number
     let saleNumber = generateSaleNumber()
     let exists = await prisma.sale.findUnique({ where: { saleNumber } })
@@ -103,7 +114,7 @@ export async function POST(request: NextRequest) {
         discount,
         total,
         paymentMethod: data.paymentMethod,
-        paymentStatus: data.paymentStatus || 'COMPLETED',
+        paymentStatus: data.paymentStatus,
         paymentReference: data.paymentReference,
         notes: data.notes,
         items: {

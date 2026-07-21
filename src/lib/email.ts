@@ -1,5 +1,3 @@
-// Email simulation - in production, this would use a real email service like SendGrid, Mailgun, etc.
-
 interface EmailOptions {
   to: string
   subject: string
@@ -10,160 +8,40 @@ interface EmailOptions {
 interface EmailResult {
   success: boolean
   messageId: string
-  preview?: string
 }
 
-// Simulated email sending - logs to console and returns success
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
-  const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  const endpoint = process.env.EMAIL_WEBHOOK_URL
+  const token = process.env.EMAIL_WEBHOOK_TOKEN
+  if (!endpoint || !token) throw new Error('Email provider is not configured')
+  const url = new URL(endpoint)
+  if (url.protocol !== 'https:' || url.username || url.password) throw new Error('EMAIL_WEBHOOK_URL must be credential-free HTTPS')
 
-  // Log the email for development/testing
-  console.log('='.repeat(60))
-  console.log('EMAIL SIMULATION')
-  console.log('='.repeat(60))
-  console.log(`To: ${options.to}`)
-  console.log(`Subject: ${options.subject}`)
-  console.log(`Message ID: ${messageId}`)
-  console.log('-'.repeat(60))
-  console.log('HTML Content:')
-  console.log(options.html)
-  console.log('='.repeat(60))
-
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 100))
-
-  return {
-    success: true,
-    messageId,
-    preview: `Email logged to console (simulation mode)`
-  }
+  const response = await fetch(url, {
+    method: 'POST',
+    redirect: 'error',
+    signal: AbortSignal.timeout(5000),
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(options),
+  })
+  if (!response.ok) throw new Error(`Email provider returned HTTP ${response.status}`)
+  const data = await response.json().catch(() => ({})) as { id?: unknown }
+  return { success: true, messageId: String(data.id || '') }
 }
 
-export function generateQuoteApprovalEmail(
-  customerName: string,
-  quoteNumber: string,
-  total: number,
-  approvalLink: string,
-  shopName: string,
-  validUntil: Date
-): { subject: string; html: string; text: string } {
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
-
-  const formatDate = (date: Date) =>
-    new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(date)
-
+export function generateQuoteApprovalEmail(customerName: string, quoteNumber: string, total: number, approvalLink: string, shopName: string, validUntil: Date) {
+  const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(total)
+  const date = new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(validUntil)
   const subject = `Quote ${quoteNumber} Ready for Your Approval - ${shopName}`
-
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: #2563eb; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-    .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
-    .footer { background: #f3f4f6; padding: 15px; border-radius: 0 0 8px 8px; font-size: 12px; color: #6b7280; }
-    .btn { display: inline-block; background: #2563eb; color: white !important; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 10px 0; }
-    .btn:hover { background: #1d4ed8; }
-    .total { font-size: 24px; font-weight: bold; color: #2563eb; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 style="margin: 0;">${shopName}</h1>
-      <p style="margin: 5px 0 0 0; opacity: 0.9;">Quote Approval Request</p>
-    </div>
-    <div class="content">
-      <p>Hi ${customerName},</p>
-      <p>Your repair quote is ready for review. Please review the details and let us know if you'd like to proceed.</p>
-
-      <div style="background: white; padding: 15px; border-radius: 8px; margin: 20px 0;">
-        <p style="margin: 0 0 10px 0;"><strong>Quote Number:</strong> ${quoteNumber}</p>
-        <p style="margin: 0 0 10px 0;"><strong>Total Amount:</strong> <span class="total">${formatCurrency(total)}</span></p>
-        <p style="margin: 0;"><strong>Valid Until:</strong> ${formatDate(validUntil)}</p>
-      </div>
-
-      <p>Click the button below to view the full quote details and approve or decline:</p>
-
-      <p style="text-align: center;">
-        <a href="${approvalLink}" class="btn">Review & Approve Quote</a>
-      </p>
-
-      <p style="font-size: 14px; color: #6b7280;">
-        Or copy and paste this link into your browser:<br>
-        <a href="${approvalLink}" style="color: #2563eb;">${approvalLink}</a>
-      </p>
-    </div>
-    <div class="footer">
-      <p>This is an automated message from ${shopName}. If you have any questions, please contact us directly.</p>
-      <p>This link will expire on ${formatDate(validUntil)}.</p>
-    </div>
-  </div>
-</body>
-</html>
-  `
-
-  const text = `
-${shopName} - Quote Approval Request
-
-Hi ${customerName},
-
-Your repair quote is ready for review.
-
-Quote Number: ${quoteNumber}
-Total Amount: ${formatCurrency(total)}
-Valid Until: ${formatDate(validUntil)}
-
-Click the link below to review and approve or decline:
-${approvalLink}
-
-This link will expire on ${formatDate(validUntil)}.
-
-If you have any questions, please contact us directly.
-  `
-
+  const text = `${customerName}, review quote ${quoteNumber} for ${money}, valid until ${date}: ${approvalLink}`
+  const html = `<p>Hi ${customerName},</p><p>Review quote <strong>${quoteNumber}</strong> for <strong>${money}</strong>, valid until ${date}.</p><p><a href="${approvalLink}">Review quote</a></p>`
   return { subject, html, text }
 }
 
-export function generatePasswordResetEmail(
-  firstName: string,
-  resetLink: string
-): { subject: string; html: string } {
-  return {
-    subject: 'Password Reset Request - RepairShop Pro',
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #2563eb;">Password Reset</h2>
-        <p>Hi ${firstName},</p>
-        <p>You requested a password reset. Click the button below to set a new password:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">Reset Password</a>
-        </p>
-        <p style="font-size: 14px; color: #6b7280;">This link expires in 1 hour. If you didn't request this, please ignore this email.</p>
-      </div>
-    `,
-  }
+export function generatePasswordResetEmail(firstName: string, resetLink: string) {
+  return { subject: 'Password Reset Request - RepairShop Pro', html: `<p>Hi ${firstName},</p><p><a href="${resetLink}">Reset your password</a>. This link expires in one hour.</p>` }
 }
 
-export function generateVerificationEmail(
-  firstName: string,
-  verifyLink: string
-): { subject: string; html: string } {
-  return {
-    subject: 'Verify Your Email - RepairShop Pro',
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <h2 style="color: #2563eb;">Verify Your Email</h2>
-        <p>Hi ${firstName},</p>
-        <p>Thank you for registering! Please verify your email address by clicking the button below:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${verifyLink}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">Verify Email</a>
-        </p>
-        <p style="font-size: 14px; color: #6b7280;">If you didn't create an account, please ignore this email.</p>
-      </div>
-    `,
-  }
+export function generateVerificationEmail(firstName: string, verifyLink: string) {
+  return { subject: 'Verify Your Email - RepairShop Pro', html: `<p>Hi ${firstName},</p><p><a href="${verifyLink}">Verify your email</a>.</p>` }
 }

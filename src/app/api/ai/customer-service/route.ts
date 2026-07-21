@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { answerCustomerQuestion } from '@/lib/ai'
 import prisma from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser()
+    if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
     const { question, ticketNumber } = await request.json()
 
     if (!question) {

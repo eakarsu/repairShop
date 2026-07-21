@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { hashPassword } from '@/lib/auth'
 import { passwordSchema } from '@/lib/validation'
+import crypto from 'crypto'
 
 export async function POST(request: Request) {
   try {
@@ -19,8 +20,9 @@ export async function POST(request: Request) {
       )
     }
 
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex')
     const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { token },
+      where: { token: tokenHash },
       include: { user: true },
     })
 

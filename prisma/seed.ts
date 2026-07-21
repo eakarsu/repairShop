@@ -38,6 +38,10 @@ async function clearDatabase() {
 }
 
 async function main() {
+  if (process.env.ALLOW_DISPOSABLE_SEED !== 'YES') throw new Error('Refusing destructive seed; set ALLOW_DISPOSABLE_SEED=YES only for a disposable database')
+  const seedEmail = String(process.env.SEED_ADMIN_EMAIL || '').trim().toLowerCase()
+  const seedPassword = String(process.env.SEED_ADMIN_PASSWORD || '')
+  if (!seedEmail || seedPassword.length < 16) throw new Error('SEED_ADMIN_EMAIL and a SEED_ADMIN_PASSWORD of at least 16 characters are required')
   console.log('Starting seed...')
 
   // Clear existing data first
@@ -70,13 +74,13 @@ async function main() {
   console.log('Settings created')
 
   // Create Users (6 users)
-  const hashedPassword = await bcrypt.hash('password123', 10)
+  const hashedPassword = await bcrypt.hash(seedPassword, 10)
 
   const users = await Promise.all([
     prisma.user.upsert({
-      where: { email: 'admin@techfixpro.com' },
+      where: { email: seedEmail },
       update: {},
-      create: { email: 'admin@techfixpro.com', password: hashedPassword, firstName: 'John', lastName: 'Admin', role: UserRole.ADMIN, phone: '(415) 555-0001', emailVerified: true },
+      create: { email: seedEmail, password: hashedPassword, firstName: 'RepairShop', lastName: 'Operator', role: UserRole.ADMIN, phone: '(415) 555-0001', emailVerified: true },
     }),
     prisma.user.upsert({
       where: { email: 'manager@techfixpro.com' },

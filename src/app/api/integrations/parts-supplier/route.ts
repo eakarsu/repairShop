@@ -22,13 +22,8 @@ export async function POST(request: NextRequest) {
   try {
     const { partNumber } = await request.json()
     if (!partNumber) return NextResponse.json({ error: 'partNumber required' }, { status: 400 })
-    return NextResponse.json({
-      ok: true,
-      provider: process.env.SUPPLIER_PROVIDER,
-      partNumber,
-      results: [],
-      simulated: true,
-    })
+    void partNumber
+    return NextResponse.json({ error: 'Parts supplier adapter is not implemented; no supplier search ran' }, { status: 501 })
   } catch (e) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }

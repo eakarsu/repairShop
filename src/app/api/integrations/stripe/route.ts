@@ -23,15 +23,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { amount, currency = 'usd', description } = body || {}
     if (!amount) return NextResponse.json({ error: 'amount required' }, { status: 400 })
-    return NextResponse.json({
-      ok: true,
-      provider: 'stripe',
-      amount,
-      currency,
-      description,
-      simulated: true,
-      note: 'Real Stripe call (charges/payment_intents) gated on env config.',
-    })
+    void currency
+    void description
+    return NextResponse.json({ error: 'Stripe adapter is not implemented; no payment was created' }, { status: 501 })
   } catch (e) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }

@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
   try {
     const { to, subject, body } = await request.json()
     if (!to || !subject || !body) return NextResponse.json({ error: 'to, subject, body required' }, { status: 400 })
-    return NextResponse.json({ ok: true, provider: 'sendgrid', to, simulated: true })
+    void to
+    return NextResponse.json({ error: 'SendGrid adapter is not implemented; no message was sent' }, { status: 501 })
   } catch (e) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }

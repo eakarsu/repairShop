@@ -68,7 +68,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-field"
-              placeholder="admin@techfixpro.com"
+              placeholder="you@example.com"
               required
             />
           </div>
@@ -83,7 +83,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input-field"
-              placeholder="password123"
+              placeholder="Enter your password"
               required
             />
           </div>
@@ -100,27 +100,9 @@ export default function LoginPage() {
             <Link href="/forgot-password" className="text-primary-600 hover:text-primary-700 font-medium">
               Forgot Password?
             </Link>
-            <Link href="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-              Create Account
-            </Link>
           </div>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setEmail('admin@techfixpro.com')
-              setPassword('password123')
-            }}
-            className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
-          >
-            Fill Demo Credentials
-          </button>
-          <p className="text-sm text-gray-500 mt-2">
-            Click above to auto-fill demo login
-          </p>
-        </div>
       </div>
     </div>
   )

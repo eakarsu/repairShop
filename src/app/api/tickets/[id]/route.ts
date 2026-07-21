@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { TicketStatus } from '@prisma/client'
+import { assertTicketTransition } from '@/lib/ticketLifecycle'
 
 export async function GET(
   request: NextRequest,
@@ -68,6 +69,11 @@ export async function PUT(
 
     // Handle status change
     if (data.status && data.status !== currentTicket.status) {
+      try {
+        assertTicketTransition(currentTicket.status, data.status)
+      } catch (error) {
+        return NextResponse.json({ success: false, error: (error as Error).message }, { status: 409 })
+      }
       await prisma.ticketStatusHistory.create({
         data: {
           ticketId: id,

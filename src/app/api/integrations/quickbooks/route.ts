@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
   try {
     const { entity, payload } = await request.json()
     if (!entity) return NextResponse.json({ error: 'entity required' }, { status: 400 })
-    return NextResponse.json({ ok: true, provider: 'quickbooks', entity, simulated: true })
+    void entity
+    return NextResponse.json({ error: 'QuickBooks adapter is not implemented; nothing was synchronized' }, { status: 501 })
   } catch (e) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
