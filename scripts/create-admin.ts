@@ -8,20 +8,31 @@ async function main() {
   const email = String(process.env.ADMIN_EMAIL || process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase()
   const password = String(process.env.ADMIN_PASSWORD || process.env.BOOTSTRAP_ADMIN_PASSWORD || '')
   const words = String(process.env.BOOTSTRAP_ADMIN_NAME || 'Initial Administrator').trim().split(/\s+/)
+  const firstName = words.shift() || 'Initial'
+  const lastName = words.join(' ') || 'Administrator'
   if (!email || !email.includes('@') || password.length < 16) throw new Error('A valid administrator email and 16+ character password are required')
-  if (await prisma.user.count()) throw new Error('Administrator bootstrap refuses a non-empty user store')
-  await prisma.user.create({
-    data: {
+  const passwordHash = await bcrypt.hash(password, 12)
+  await prisma.user.upsert({
+    where: { email },
+    create: {
       email,
-      password: await bcrypt.hash(password, 12),
-      firstName: words.shift() || 'Initial',
-      lastName: words.join(' ') || 'Administrator',
+      password: passwordHash,
+      firstName,
+      lastName,
+      role: UserRole.ADMIN,
+      isActive: true,
+      emailVerified: true,
+    },
+    update: {
+      password: passwordHash,
+      firstName,
+      lastName,
       role: UserRole.ADMIN,
       isActive: true,
       emailVerified: true,
     },
   })
-  console.log(`Provisioned administrator ${email}`)
+  console.log(`Configured administrator ${email}`)
 }
 
 main()

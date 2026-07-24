@@ -30,6 +30,7 @@ model User {
   quotes        Quote[]
   autoOrderApprovals AutoOrderLog[] @relation("ApprovedBy")
   passwordResetTokens PasswordResetToken[]
+  runtimeAiResults RuntimeAiResult[]
 }
 
 enum UserRole {
@@ -489,6 +490,21 @@ model AiDiagnosticMessage {
   role        String    // 'user' or 'assistant'
   content     String
   createdAt   DateTime  @default(now())
+}
+
+model RuntimeAiResult {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  feature            String
+  prompt             String
+  content            String
+  provider           String
+  model              String
+  providerResponseId String
+  createdAt          DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // Ticket Photos for Damage Assessment
