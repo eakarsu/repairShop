@@ -185,7 +185,7 @@ export default function TimelineProgress({
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <p className="text-xs text-gray-500">Duration</p>
               <p className="font-semibold text-sm">
-                {timeline.estimatedDurationMinutes
+                {timeline.estimatedDurationMinutes != null
                   ? formatDuration(timeline.estimatedDurationMinutes)
                   : 'TBD'}
               </p>
@@ -201,7 +201,7 @@ export default function TimelineProgress({
           </div>
 
           {/* Complexity Score */}
-          {timeline.complexityScore && (
+          {timeline.complexityScore != null && (
             <div className="mb-6">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-sm text-gray-600">Complexity Score</span>

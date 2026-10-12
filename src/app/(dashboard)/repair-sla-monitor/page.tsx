@@ -2,39 +2,31 @@
 
 import { useEffect, useState } from 'react'
 
-const empty = { ticket: '', device: '', stage: '', promisedHours: 24, elapsedHours: 0, owner: '', status: 'on track' }
+type Row = { id: string; ticket: string; device: string; stage: string; promisedHours: number | null; elapsedHours: number; owner: string; status: string }
+type Summary = { total: number; breachRisk: number }
 
 export default function RepairSlaMonitorPage() {
-  const [rows, setRows] = useState<any[]>([])
-  const [summary, setSummary] = useState({ total: 0, breachRisk: 0 })
-  const [form, setForm] = useState(empty)
+  const [rows, setRows] = useState<Row[]>([])
+  const [summary, setSummary] = useState<Summary>({ total: 0, breachRisk: 0 })
+  const [error, setError] = useState('')
 
-  async function load() {
-    const res = await fetch('/api/repair-sla-monitor')
-    const data = await res.json()
-    setRows(data.rows || [])
-    setSummary(data.summary || { total: 0, breachRisk: 0 })
-  }
-
-  useEffect(() => { load() }, [])
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    await fetch('/api/repair-sla-monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-    setForm(empty)
-    load()
-  }
+  useEffect(() => {
+    let active = true
+    fetch('/api/repair-sla-monitor').then(async response => {
+      const payload = await response.json()
+      if (!response.ok || !payload.success || !Array.isArray(payload.rows)) throw new Error(payload.error || 'Invalid repair ticket response')
+      if (active) {
+        setRows(payload.rows)
+        setSummary(payload.summary && typeof payload.summary === 'object' ? payload.summary : { total: payload.rows.length, breachRisk: 0 })
+      }
+    }).catch(() => { if (active) setError('Repair tickets could not be loaded. Check the database connection and try again.') })
+    return () => { active = false }
+  }, [])
 
   return <div className="p-6 space-y-6">
-    <div><h1 className="text-2xl font-bold text-gray-900">Repair SLA Monitor</h1><p className="text-gray-600">Ticket stage timing, promised repair windows, and breach risk.</p></div>
-    <div className="grid grid-cols-2 gap-4">{['total','breachRisk'].map(k => <div key={k} className="bg-white rounded-lg border p-4"><div className="text-sm text-gray-500">{k}</div><div className="text-2xl font-semibold">{(summary as any)[k]}</div></div>)}</div>
-    <form onSubmit={submit} className="grid gap-3 bg-white rounded-lg border p-4 md:grid-cols-4">
-      {['ticket','device','stage','owner'].map(f => <input key={f} className="border rounded p-2" placeholder={f} value={(form as any)[f]} onChange={e => setForm({ ...form, [f]: e.target.value })} />)}
-      <input className="border rounded p-2" type="number" value={form.promisedHours} onChange={e => setForm({ ...form, promisedHours: Number(e.target.value) })} />
-      <input className="border rounded p-2" type="number" value={form.elapsedHours} onChange={e => setForm({ ...form, elapsedHours: Number(e.target.value) })} />
-      <select className="border rounded p-2" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}><option>on track</option><option>breach risk</option><option>complete</option></select>
-      <button className="bg-primary-600 text-white rounded px-4 py-2">Add Ticket</button>
-    </form>
-    <table className="w-full bg-white border rounded-lg"><thead><tr>{['Ticket','Device','Stage','Promised','Elapsed','Owner','Status'].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{rows.map(r => <tr key={r.id} className="border-t"><td className="p-3">{r.ticket}</td><td>{r.device}</td><td>{r.stage}</td><td>{r.promisedHours}h</td><td>{r.elapsedHours}h</td><td>{r.owner}</td><td>{r.status}</td></tr>)}</tbody></table>
+    <div><h1 className="text-2xl font-bold text-gray-900">Repair SLA Monitor</h1><p className="text-gray-600">Timing and completion risk from saved repair tickets. Promised hours appear only when an estimated completion is recorded.</p></div>
+    {error && <p role="alert" className="rounded border border-red-200 bg-red-50 p-3 text-red-800">{error}</p>}
+    <div className="grid grid-cols-2 gap-4"><div className="bg-white rounded-lg border p-4"><div className="text-sm text-gray-500">Tickets shown</div><div className="text-2xl font-semibold">{summary.total}</div></div><div className="bg-white rounded-lg border p-4"><div className="text-sm text-gray-500">Past estimated completion</div><div className="text-2xl font-semibold">{summary.breachRisk}</div></div></div>
+    <div className="overflow-x-auto"><table className="w-full bg-white border rounded-lg"><thead><tr>{['Ticket','Device','Stage','Promised','Elapsed','Owner','Status'].map(heading => <th key={heading} className="p-3 text-left">{heading}</th>)}</tr></thead><tbody>{rows.map(row => <tr key={row.id} className="border-t"><td className="p-3">{row.ticket}</td><td className="p-3">{row.device}</td><td className="p-3">{row.stage}</td><td className="p-3">{row.promisedHours === null ? 'Not set' : `${row.promisedHours}h`}</td><td className="p-3">{row.elapsedHours}h</td><td className="p-3">{row.owner}</td><td className="p-3">{row.status}</td></tr>)}</tbody></table></div>
   </div>
 }

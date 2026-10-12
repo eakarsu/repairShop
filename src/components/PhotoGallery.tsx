@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import AIResponseReport from './AIResponseReport'
 
 interface Photo {
   id: string
@@ -162,68 +163,7 @@ export default function PhotoGallery({ photos, ticketId, onDelete, onPhotoDelete
 
               <div className="md:w-1/3 p-4 border-l overflow-y-auto max-h-[60vh]">
                 {selectedPhoto.aiAnalysis ? (
-                  <div className="space-y-4">
-                    <h4 className="font-semibold text-green-600">AI Analysis Results</h4>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Damage Type</span>
-                      <p className="font-medium">{selectedPhoto.aiAnalysis.damageType}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Severity</span>
-                      <p className={`font-medium ${
-                        selectedPhoto.aiAnalysis.severity === 'Severe' ? 'text-red-600' :
-                        selectedPhoto.aiAnalysis.severity === 'Moderate' ? 'text-yellow-600' :
-                        'text-green-600'
-                      }`}>
-                        {selectedPhoto.aiAnalysis.severity}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Description</span>
-                      <p className="text-sm">{selectedPhoto.aiAnalysis.description}</p>
-                    </div>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Affected Components</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {selectedPhoto.aiAnalysis.affectedComponents.map((c, i) => (
-                          <span key={i} className="bg-gray-100 px-2 py-1 rounded text-xs">
-                            {c}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Repair Recommendations</span>
-                      <ul className="list-disc list-inside text-sm mt-1">
-                        {selectedPhoto.aiAnalysis.repairRecommendations.map((r, i) => (
-                          <li key={i}>{r}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Est. Repair Cost</span>
-                      <p className="font-medium">
-                        ${selectedPhoto.aiAnalysis.estimatedRepairCost.min} - ${selectedPhoto.aiAnalysis.estimatedRepairCost.max}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-sm text-gray-500">Urgency</span>
-                      <p className={`font-medium ${
-                        selectedPhoto.aiAnalysis.urgency === 'High' ? 'text-red-600' :
-                        selectedPhoto.aiAnalysis.urgency === 'Medium' ? 'text-yellow-600' :
-                        'text-green-600'
-                      }`}>
-                        {selectedPhoto.aiAnalysis.urgency}
-                      </p>
-                    </div>
-                  </div>
+                  <AIResponseReport value={selectedPhoto.aiAnalysis} title="Saved damage assessment" />
                 ) : (
                   <div className="space-y-4">
                     <h4 className="font-semibold">Run AI Damage Assessment</h4>
@@ -237,6 +177,13 @@ export default function PhotoGallery({ photos, ticketId, onDelete, onPhotoDelete
                       className="w-full p-2 border rounded-lg text-sm"
                       rows={4}
                     />
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        'The screen has several cracks radiating from the upper right corner; the display image and touch response cannot be confirmed from this photo.',
+                        'The charging port appears bent and contains visible lint; electrical function has not been tested.',
+                        'The rear housing shows a dent beside the camera, with no visible broken glass; internal damage cannot be assessed from the image.'
+                      ].map((example, index) => <button key={index} type="button" disabled={analyzing === selectedPhoto.id} onClick={() => setAnalysisDescription(example)} className="rounded border px-2 py-1 text-xs">Fill example {index + 1}</button>)}
+                    </div>
                     <button
                       onClick={() => handleAnalyze(selectedPhoto)}
                       disabled={analyzing === selectedPhoto.id}

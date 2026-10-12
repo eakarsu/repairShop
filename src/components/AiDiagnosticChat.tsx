@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import AIResponseReport from './AIResponseReport'
 
 interface Message {
   id: string
@@ -165,7 +166,7 @@ export default function AiDiagnosticChat({
                   : 'bg-gray-100 text-gray-800'
               }`}
             >
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              {message.role === 'assistant' ? <AIResponseReport value={message.content} title="Diagnostic reply" /> : <p className="whitespace-pre-wrap">{message.content}</p>}
               <span className={`text-xs mt-1 block ${
                 message.role === 'user' ? 'text-blue-200' : 'text-gray-400'
               }`}>
@@ -238,6 +239,13 @@ export default function AiDiagnosticChat({
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
+        <div className="mb-3 flex flex-wrap gap-2" aria-label="Diagnostic examples">
+          {[
+            'The phone loses charge overnight despite no apps running. What battery and charging tests should we perform?',
+            'The screen flickers after a recent drop, but touch still works. Which checks can distinguish display damage from a loose connector?',
+            'The laptop powers on with a fan but shows no image on its built-in display. What safe diagnostic sequence should the technician follow?'
+          ].map((example, index) => <button key={index} type="button" disabled={isLoading} onClick={() => setInput(example)} className="rounded border px-2 py-1 text-xs">Fill example {index + 1}</button>)}
+        </div>
         <div className="flex gap-2">
           <input
             type="text"

@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
@@ -54,6 +56,8 @@ interface PredictiveMaintenanceResult {
 }
 
 export default function AIToolsPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [activeTab, setActiveTab] = useState('diagnostic')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -310,7 +314,7 @@ export default function AIToolsPage() {
   ]
 
   return (
-    <div className="p-8">
+    <div className="p-8" data-full-ai-workspace="AIToolsPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">AI Tools</h1>
@@ -361,7 +365,7 @@ export default function AIToolsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Device Type</label>
-                  <select value={deviceInfo.deviceType} onChange={(e) => setDeviceInfo({ ...deviceInfo, deviceType: e.target.value })} className="select-field">
+                  <select value={deviceInfo.deviceType} onChange={(e) => setDeviceInfo({ ...deviceInfo, deviceType: e.target.value })} className="select-field" data-full-ai-field={fullAIExamples.bind({ current: deviceInfo.deviceType, change: (e) => setDeviceInfo({ ...deviceInfo, deviceType: e.target.value }), label: "deviceInfo.deviceType", manual: false, json: false, sample: '' }, "p1-12682", undefined)}>
                     <option value="">Select...</option>
                     <option value="Smartphone">Smartphone</option>
                     <option value="Tablet">Tablet</option>
@@ -372,21 +376,21 @@ export default function AIToolsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Brand</label>
-                  <input type="text" value={deviceInfo.brand} onChange={(e) => setDeviceInfo({ ...deviceInfo, brand: e.target.value })} className="input-field" />
+                  <input type="text" value={deviceInfo.brand} onChange={(e) => setDeviceInfo({ ...deviceInfo, brand: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: deviceInfo.brand, change: (e) => setDeviceInfo({ ...deviceInfo, brand: e.target.value }), label: "deviceInfo.brand", manual: false, json: false, sample: '' }, "p1-13363", undefined)} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Model</label>
-                <input type="text" value={deviceInfo.model} onChange={(e) => setDeviceInfo({ ...deviceInfo, model: e.target.value })} className="input-field" />
+                <input type="text" value={deviceInfo.model} onChange={(e) => setDeviceInfo({ ...deviceInfo, model: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: deviceInfo.model, change: (e) => setDeviceInfo({ ...deviceInfo, model: e.target.value }), label: "deviceInfo.model", manual: false, json: false, sample: '' }, "p1-13668", undefined)} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Issue Description</label>
-                <textarea value={deviceInfo.issueDescription} onChange={(e) => setDeviceInfo({ ...deviceInfo, issueDescription: e.target.value })} className="input-field" rows={3} />
+                <textarea value={deviceInfo.issueDescription} onChange={(e) => setDeviceInfo({ ...deviceInfo, issueDescription: e.target.value })} className="input-field" rows={3} data-full-ai-field={fullAIExamples.bind({ current: deviceInfo.issueDescription, change: (e) => setDeviceInfo({ ...deviceInfo, issueDescription: e.target.value }), label: "deviceInfo.issueDescription", manual: false, json: false, sample: '' }, "p1-13962", undefined)} />
               </div>
               {activeTab === 'guide' && (
                 <div>
                   <label className="block text-sm font-medium mb-1">Repair Type</label>
-                  <input type="text" value={repairType} onChange={(e) => setRepairType(e.target.value)} className="input-field" placeholder="e.g., Screen Replacement" />
+                  <input type="text" value={repairType} onChange={(e) => setRepairType(e.target.value)} className="input-field" placeholder="e.g., Screen Replacement" data-full-ai-field={fullAIExamples.bind({ current: repairType, change: (e) => setRepairType(e.target.value), label: "repairType", manual: false, json: false, sample: '' }, "p1-14320", undefined)} />
                 </div>
               )}
               <button
@@ -404,21 +408,21 @@ export default function AIToolsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Brand</label>
-                  <input type="text" value={warrantyInfo.brand} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, brand: e.target.value })} className="input-field" />
+                  <input type="text" value={warrantyInfo.brand} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, brand: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: warrantyInfo.brand, change: (e) => setWarrantyInfo({ ...warrantyInfo, brand: e.target.value }), label: "warrantyInfo.brand", manual: false, json: false, sample: '' }, "p1-15166", undefined)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Model</label>
-                  <input type="text" value={warrantyInfo.model} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, model: e.target.value })} className="input-field" />
+                  <input type="text" value={warrantyInfo.model} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, model: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: warrantyInfo.model, change: (e) => setWarrantyInfo({ ...warrantyInfo, model: e.target.value }), label: "warrantyInfo.model", manual: false, json: false, sample: '' }, "p1-15462", undefined)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Purchase Date</label>
-                  <input type="date" value={warrantyInfo.purchaseDate} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, purchaseDate: e.target.value })} className="input-field" />
+                  <input type="date" value={warrantyInfo.purchaseDate} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, purchaseDate: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: warrantyInfo.purchaseDate, change: (e) => setWarrantyInfo({ ...warrantyInfo, purchaseDate: e.target.value }), label: "warrantyInfo.purchaseDate", manual: false, json: false, sample: '' }, "p1-15842", undefined)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Serial Number</label>
-                  <input type="text" value={warrantyInfo.serialNumber} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, serialNumber: e.target.value })} className="input-field" />
+                  <input type="text" value={warrantyInfo.serialNumber} onChange={(e) => setWarrantyInfo({ ...warrantyInfo, serialNumber: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: warrantyInfo.serialNumber, change: (e) => setWarrantyInfo({ ...warrantyInfo, serialNumber: e.target.value }), label: "warrantyInfo.serialNumber", manual: false, json: false, sample: '' }, "p1-16160", undefined)} />
                 </div>
               </div>
               <button onClick={handleWarranty} disabled={loading || !warrantyInfo.brand} className="w-full btn-primary">
@@ -446,7 +450,10 @@ export default function AIToolsPage() {
                       const ticket = tickets.find(t => t.id === e.target.value)
                       setSelectedTicket(ticket || null)
                     }}
-                    className="select-field"
+                    className="select-field" data-full-ai-field={fullAIExamples.bind({ current: selectedTicket?.id || '', change: (e) => {
+                      const ticket = tickets.find(t => t.id === e.target.value)
+                      setSelectedTicket(ticket || null)
+                    }, label: "selectedTicket?.id", manual: false, json: false }, "p1-17455", undefined)}
                   >
                     <option value="">-- Select a ticket ({tickets.length} available) --</option>
                     {tickets.map((ticket) => (
@@ -494,7 +501,7 @@ export default function AIToolsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Customer Question</label>
-                <textarea value={customerQuestion} onChange={(e) => setCustomerQuestion(e.target.value)} className="input-field" rows={4} placeholder="What would the customer like to know?" />
+                <textarea value={customerQuestion} onChange={(e) => setCustomerQuestion(e.target.value)} className="input-field" rows={4} placeholder="What would the customer like to know?" data-full-ai-field={fullAIExamples.bind({ current: customerQuestion, change: (e) => setCustomerQuestion(e.target.value), label: "customerQuestion", manual: false, json: false, sample: '' }, "p1-20497", undefined)} />
               </div>
               <button onClick={handleCustomerQuestion} disabled={loading || !customerQuestion} className="w-full btn-primary">
                 {loading ? 'Thinking...' : 'Get Response'}
@@ -507,7 +514,7 @@ export default function AIToolsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Device Type</label>
-                  <select value={predMaint.deviceType} onChange={(e) => setPredMaint({ ...predMaint, deviceType: e.target.value })} className="select-field">
+                  <select value={predMaint.deviceType} onChange={(e) => setPredMaint({ ...predMaint, deviceType: e.target.value })} className="select-field" data-full-ai-field={fullAIExamples.bind({ current: predMaint.deviceType, change: (e) => setPredMaint({ ...predMaint, deviceType: e.target.value }), label: "predMaint.deviceType", manual: false, json: false, sample: '' }, "p1-21203", undefined)}>
                     <option value="">Select...</option>
                     <option value="Smartphone">Smartphone</option>
                     <option value="Tablet">Tablet</option>
@@ -517,26 +524,26 @@ export default function AIToolsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Brand</label>
-                  <input type="text" value={predMaint.brand} onChange={(e) => setPredMaint({ ...predMaint, brand: e.target.value })} className="input-field" />
+                  <input type="text" value={predMaint.brand} onChange={(e) => setPredMaint({ ...predMaint, brand: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: predMaint.brand, change: (e) => setPredMaint({ ...predMaint, brand: e.target.value }), label: "predMaint.brand", manual: false, json: false, sample: '' }, "p1-21824", undefined)} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Model</label>
-                <input type="text" value={predMaint.model} onChange={(e) => setPredMaint({ ...predMaint, model: e.target.value })} className="input-field" />
+                <input type="text" value={predMaint.model} onChange={(e) => setPredMaint({ ...predMaint, model: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: predMaint.model, change: (e) => setPredMaint({ ...predMaint, model: e.target.value }), label: "predMaint.model", manual: false, json: false, sample: '' }, "p1-22126", undefined)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Age (months)</label>
-                  <input type="number" value={predMaint.ageMonths} onChange={(e) => setPredMaint({ ...predMaint, ageMonths: e.target.value })} className="input-field" />
+                  <input type="number" value={predMaint.ageMonths} onChange={(e) => setPredMaint({ ...predMaint, ageMonths: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: predMaint.ageMonths, change: (e) => setPredMaint({ ...predMaint, ageMonths: e.target.value }), label: "predMaint.ageMonths", manual: false, json: false, sample: '12' }, "p1-22473", undefined)} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Past Ticket Count</label>
-                  <input type="number" value={predMaint.pastTicketCount} onChange={(e) => setPredMaint({ ...predMaint, pastTicketCount: e.target.value })} className="input-field" />
+                  <input type="number" value={predMaint.pastTicketCount} onChange={(e) => setPredMaint({ ...predMaint, pastTicketCount: e.target.value })} className="input-field" data-full-ai-field={fullAIExamples.bind({ current: predMaint.pastTicketCount, change: (e) => setPredMaint({ ...predMaint, pastTicketCount: e.target.value }), label: "predMaint.pastTicketCount", manual: false, json: false, sample: '0' }, "p1-22782", undefined)} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Past Issues (one per line)</label>
-                <textarea value={predMaint.pastIssues} onChange={(e) => setPredMaint({ ...predMaint, pastIssues: e.target.value })} className="input-field" rows={3} placeholder="Cracked screen&#10;Battery drain" />
+                <textarea value={predMaint.pastIssues} onChange={(e) => setPredMaint({ ...predMaint, pastIssues: e.target.value })} className="input-field" rows={3} placeholder="Cracked screen&#10;Battery drain" data-full-ai-field={fullAIExamples.bind({ current: predMaint.pastIssues, change: (e) => setPredMaint({ ...predMaint, pastIssues: e.target.value }), label: "predMaint.pastIssues", manual: false, json: false, sample: '' }, "p1-23127", undefined)} />
               </div>
               <button onClick={handlePredictiveMaintenance} disabled={loading || !predMaint.deviceType} className="w-full btn-primary">
                 {loading ? 'Analyzing...' : 'Predict Maintenance Needs'}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency, formatDateTime, getStatusColor, getPriorityColor } from '@/lib/utils'
@@ -64,7 +64,8 @@ interface Photo {
   uploadedAt: string
 }
 
-export default function TicketDetailPage({ params }: { params: { id: string } }) {
+export default function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const nativeRouteParams = use(params)
   const router = useRouter()
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
@@ -106,11 +107,11 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     fetchTechnicians()
     fetchParts()
     fetchPhotos()
-  }, [params.id])
+  }, [nativeRouteParams.id])
 
   const fetchTicket = async () => {
     try {
-      const res = await fetch(`/api/tickets/${params.id}`)
+      const res = await fetch(`/api/tickets/${nativeRouteParams.id}`)
       const data = await res.json()
       if (data.success) {
         setTicket(data.data.ticket)
@@ -133,7 +134,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
 
   const fetchPhotos = async () => {
     try {
-      const res = await fetch(`/api/tickets/${params.id}/photos`)
+      const res = await fetch(`/api/tickets/${nativeRouteParams.id}/photos`)
       const data = await res.json()
       if (data.success) {
         setPhotos(data.data)
@@ -162,7 +163,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/tickets/${params.id}`, {
+      const res = await fetch(`/api/tickets/${nativeRouteParams.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -188,7 +189,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     if (!selectedPart) return
 
     try {
-      const res = await fetch(`/api/tickets/${params.id}/parts`, {
+      const res = await fetch(`/api/tickets/${nativeRouteParams.id}/parts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,7 +217,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
     if (!confirm('Remove this part?')) return
 
     try {
-      const res = await fetch(`/api/tickets/${params.id}/parts`, {
+      const res = await fetch(`/api/tickets/${nativeRouteParams.id}/parts`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticketPartId }),
@@ -260,7 +261,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
       const res = await fetch('/api/ai/status-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketId: params.id }),
+        body: JSON.stringify({ ticketId: nativeRouteParams.id }),
       })
 
       const data = await res.json()

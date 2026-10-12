@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, formatDateTime, getStatusColor } from '@/lib/utils'
@@ -51,7 +51,8 @@ interface Communication {
   user: { firstName: string; lastName: string }
 }
 
-export default function CustomerDetailPage({ params }: { params: { id: string } }) {
+export default function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const nativeRouteParams = use(params)
   const router = useRouter()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
@@ -86,11 +87,11 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
 
   useEffect(() => {
     fetchCustomer()
-  }, [params.id])
+  }, [nativeRouteParams.id])
 
   const fetchCustomer = async () => {
     try {
-      const res = await fetch(`/api/customers/${params.id}`)
+      const res = await fetch(`/api/customers/${nativeRouteParams.id}`)
       const data = await res.json()
       if (data.success) {
         setCustomer(data.data.customer)
@@ -116,7 +117,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/customers/${params.id}`, {
+      const res = await fetch(`/api/customers/${nativeRouteParams.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -140,7 +141,7 @@ export default function CustomerDetailPage({ params }: { params: { id: string } 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerId: params.id,
+          customerId: nativeRouteParams.id,
           ...deviceData,
         }),
       })

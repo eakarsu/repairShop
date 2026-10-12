@@ -37,6 +37,21 @@ export default function LoginPage() {
     }
   }
 
+  const handleDemoLogin = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/demo-login', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) router.push('/dashboard')
+      else setError(data.error || 'Demo login is unavailable')
+    } catch {
+      setError('Demo login is unavailable. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
@@ -90,12 +105,12 @@ export default function LoginPage() {
 
           <button
             type="button"
-            onClick={() => { setEmail(process.env.NEXT_PUBLIC_DEMO_EMAIL || ''); setPassword(process.env.NEXT_PUBLIC_DEMO_PASSWORD || ''); }}
-            disabled={!process.env.NEXT_PUBLIC_DEMO_EMAIL || !process.env.NEXT_PUBLIC_DEMO_PASSWORD}
-            aria-label="Auto Fill Demo Credentials"
+            onClick={handleDemoLogin}
+            disabled={loading}
+            aria-label="Log In as Demo"
             style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
           >
-            Auto Fill Demo Credentials
+            Log In as Demo
           </button>
           <button
             type="submit"

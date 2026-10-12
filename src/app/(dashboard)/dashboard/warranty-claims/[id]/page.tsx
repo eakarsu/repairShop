@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { formatDate, formatDateTime, formatCurrency, getWarrantyClaimStatusColor } from '@/lib/utils'
@@ -71,7 +71,8 @@ const statusLabels: Record<string, string> = {
   CANCELLED: 'Cancelled'
 }
 
-export default function WarrantyClaimDetailPage({ params }: { params: { id: string } }) {
+export default function WarrantyClaimDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const nativeRouteParams = use(params)
   const router = useRouter()
   const [claim, setClaim] = useState<WarrantyClaim | null>(null)
   const [loading, setLoading] = useState(true)
@@ -81,11 +82,11 @@ export default function WarrantyClaimDetailPage({ params }: { params: { id: stri
 
   useEffect(() => {
     fetchClaim()
-  }, [params.id])
+  }, [nativeRouteParams.id])
 
   const fetchClaim = async () => {
     try {
-      const res = await fetch(`/api/warranty-claims/${params.id}`)
+      const res = await fetch(`/api/warranty-claims/${nativeRouteParams.id}`)
       const data = await res.json()
 
       if (data.success) {

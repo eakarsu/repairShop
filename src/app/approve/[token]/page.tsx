@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { use, useState, useEffect } from 'react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface QuoteItem {
@@ -45,7 +45,8 @@ interface QuoteData {
   }
 }
 
-export default function ApprovalPage({ params }: { params: { token: string } }) {
+export default function ApprovalPage({ params }: { params: Promise<{ token: string }> }) {
+  const nativeRouteParams = use(params)
   const [data, setData] = useState<QuoteData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,11 +58,11 @@ export default function ApprovalPage({ params }: { params: { token: string } }) 
   useEffect(() => {
     fetchQuoteData()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.token])
+  }, [nativeRouteParams.token])
 
   const fetchQuoteData = async () => {
     try {
-      const res = await fetch(`/api/approve/${params.token}`)
+      const res = await fetch(`/api/approve/${nativeRouteParams.token}`)
       const result = await res.json()
 
       if (result.success) {
@@ -82,7 +83,7 @@ export default function ApprovalPage({ params }: { params: { token: string } }) 
   const handleSubmit = async (action: 'approve' | 'reject') => {
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/approve/${params.token}`, {
+      const res = await fetch(`/api/approve/${nativeRouteParams.token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, notes: notes.trim() || undefined })

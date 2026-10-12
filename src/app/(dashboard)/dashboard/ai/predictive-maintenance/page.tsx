@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import { formatCurrency } from '@/lib/utils'
@@ -33,6 +35,8 @@ interface PredictiveResponse {
 }
 
 export default function PredictiveMaintenancePage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<PredictiveMaintenanceResult | null>(null)
@@ -106,7 +110,7 @@ export default function PredictiveMaintenancePage() {
       : 'bg-green-100 text-green-700'
 
   return (
-    <div className="p-8">
+    <div className="p-8" data-full-ai-workspace="PredictiveMaintenancePage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Predictive Maintenance</h1>
@@ -134,7 +138,7 @@ export default function PredictiveMaintenancePage() {
                 <select
                   value={form.deviceType}
                   onChange={(e) => setForm({ ...form, deviceType: e.target.value })}
-                  className="select-field"
+                  className="select-field" data-full-ai-field={fullAIExamples.bind({ current: form.deviceType, change: (e) => setForm({ ...form, deviceType: e.target.value }), label: "form.deviceType", manual: false, json: false, sample: '' }, "p1-4107", undefined)}
                 >
                   <option value="">Select...</option>
                   <option value="Smartphone">Smartphone</option>
@@ -150,7 +154,7 @@ export default function PredictiveMaintenancePage() {
                   type="text"
                   value={form.brand}
                   onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                  className="input-field"
+                  className="input-field" data-full-ai-field={fullAIExamples.bind({ current: form.brand, change: (e) => setForm({ ...form, brand: e.target.value }), label: "form.brand", manual: false, json: false, sample: '' }, "p1-4823", undefined)}
                 />
               </div>
             </div>
@@ -161,7 +165,7 @@ export default function PredictiveMaintenancePage() {
                 type="text"
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
-                className="input-field"
+                className="input-field" data-full-ai-field={fullAIExamples.bind({ current: form.model, change: (e) => setForm({ ...form, model: e.target.value }), label: "form.model", manual: false, json: false, sample: '' }, "p1-5189", undefined)}
               />
             </div>
 
@@ -173,7 +177,7 @@ export default function PredictiveMaintenancePage() {
                   min="0"
                   value={form.ageMonths}
                   onChange={(e) => setForm({ ...form, ageMonths: e.target.value })}
-                  className="input-field"
+                  className="input-field" data-full-ai-field={fullAIExamples.bind({ current: form.ageMonths, change: (e) => setForm({ ...form, ageMonths: e.target.value }), label: "form.ageMonths", manual: false, json: false, sample: '' }, "p1-5590", undefined)}
                 />
               </div>
               <div>
@@ -183,7 +187,7 @@ export default function PredictiveMaintenancePage() {
                   min="0"
                   value={form.pastTicketCount}
                   onChange={(e) => setForm({ ...form, pastTicketCount: e.target.value })}
-                  className="input-field"
+                  className="input-field" data-full-ai-field={fullAIExamples.bind({ current: form.pastTicketCount, change: (e) => setForm({ ...form, pastTicketCount: e.target.value }), label: "form.pastTicketCount", manual: false, json: false, sample: '' }, "p1-5990", undefined)}
                 />
               </div>
             </div>
@@ -195,7 +199,7 @@ export default function PredictiveMaintenancePage() {
                 onChange={(e) => setForm({ ...form, pastIssues: e.target.value })}
                 className="input-field"
                 rows={4}
-                placeholder="e.g., Battery replaced 6 months ago&#10;Display flickering reported"
+                placeholder="e.g., Battery replaced 6 months ago&#10;Display flickering reported" data-full-ai-field={fullAIExamples.bind({ current: form.pastIssues, change: (e) => setForm({ ...form, pastIssues: e.target.value }), label: "form.pastIssues", manual: false, json: false, sample: '' }, "p1-6425", undefined)}
               />
             </div>
 
